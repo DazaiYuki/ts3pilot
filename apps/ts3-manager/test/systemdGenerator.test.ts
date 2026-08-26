@@ -25,6 +25,8 @@ test('agent unit includes environment and hardening', () => {
   });
   assert.match(unit, /NoNewPrivileges=true/);
   assert.match(unit, /ProtectSystem=strict/);
+  assert.doesNotMatch(unit, /^MemoryDenyWriteExecute=true/m);
+  assert.match(unit, /JIT/);
   assert.match(unit, /Environment=TS3_MANAGER_CONFIG=\/etc\/ts3-ops\/config.json/);
   assert.match(unit, /User=ts3agent/);
 });

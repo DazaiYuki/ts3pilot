@@ -25,8 +25,13 @@ ProtectControlGroups=true
 RestrictSUIDSGID=true
 RestrictRealtime=true
 LockPersonality=true
-MemoryDenyWriteExecute=true
 RestrictAddressFamilies=AF_INET AF_INET6
+`;
+
+// Native TS3 server binary: keep W^X hardening. Node.js/V8 requires executable
+// memory for its JIT, so MemoryDenyWriteExecute is intentionally NOT applied to
+// the agent unit.
+const HARDENING_SERVER = `${HARDENING_COMMON}MemoryDenyWriteExecute=true
 `;
 
 export function validateUnitName(name: string): boolean {
@@ -61,7 +66,7 @@ Restart=on-failure
 RestartSec=5
 ReadWritePaths=${options.installPath}
 
-${HARDENING_COMMON}
+${HARDENING_SERVER}
 [Install]
 WantedBy=multi-user.target
 `;
@@ -77,6 +82,8 @@ export function generateAgentUnit(options: AgentUnitOptions): string {
 #   - ${options.configPath} (config file) must be readable/writable by that user.
 #   - If identity verification is enabled, the TS3 install path must be readable
 #     and the agent must be able to open a ServerQuery connection.
+#   - NOTE: MemoryDenyWriteExecute is intentionally NOT set: Node.js/V8 requires
+#     JIT executable memory and would crash under W^X.
 
 [Unit]
 Description=TS3 Community Operations Agent (Host Control Plane)

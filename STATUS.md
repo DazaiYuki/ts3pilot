@@ -10,7 +10,7 @@
 | `composer install`（WP 插件开发依赖） | 通过（30 包） |
 | ESLint（ts3-manager src/test） | 通过，0 warning |
 | `tsc -p tsconfig.json`（strict，含测试） | 通过 |
-| `node --test`（ts3-manager） | 73/73 通过 |
+| `node --test`（ts3-manager） | 77/77 通过 |
 | PHPUnit（WP 插件） | 39 测试 / 100 断言通过 |
 | PHP lint（全部 PHP 文件） | 33/33 通过 |
 | PHPCS（WordPress-Extra，含豁免项） | 通过 |
@@ -50,6 +50,14 @@
 - 身份核验优化（本轮）：验证源改为 `identity.verify.fields` 多字段优先级
   （client_description → client_away_message → nickname），客户端详情经
   `clientinfo` 获取，避免昵称截断/防刷屏问题。
+- CLI 诊断（本轮）：`doctor` 深度检查（端口占用 9987/10011/30033/10080 等、
+  目录/文件读写权限、SQLite 文件头与大小、ts3server.ini 可读性、真实
+  ServerQuery 登录验证、Agent 健康、provider 可用性）；`adopt` 只读接管
+  向导（识别目录结构、解析 ts3server.ini 关键项、端口探测、输出最小改动
+  建议如 query_ip_whitelist/受限凭据/先备份，绝不改写文件）。
+- systemd 修复（本轮）：`ts3-agent.service` 不再启用
+  `MemoryDenyWriteExecute`（Node/V8 JIT 需要可执行内存，否则会崩）；
+  该指令仅保留在 `ts3server.service`。
 
 ### ts3-operations-wp（WP 插件，`plugins/ts3-operations-wp`）
 

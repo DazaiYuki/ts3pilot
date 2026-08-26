@@ -48,6 +48,10 @@ WantedBy=multi-user.target
 不要把 Agent 或 TS3 以 root 运行；特权动作（若有）走最小权限 sudo/systemd
 policy，而不是 root daemon。
 
+> 注意：`ts3-agent.service` **不启用** `MemoryDenyWriteExecute`——Node.js/V8
+> 需要 JIT 可执行内存，开启后 Agent 会直接崩溃；该指令仅用于
+> `ts3server.service`（原生二进制）。
+
 ## 2. 防火墙
 
 公网只开放玩家端口：Voice UDP 9987、File Transfer TCP 30033（按实际配置）。
