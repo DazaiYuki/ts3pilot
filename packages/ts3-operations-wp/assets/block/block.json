@@ -13,6 +13,9 @@
     "showOnline": { "type": "boolean", "default": true },
     "showMax": { "type": "boolean", "default": true },
     "showVersion": { "type": "boolean", "default": false },
+    "showChannels": { "type": "boolean", "default": false },
+    "collapsible": { "type": "boolean", "default": false },
+    "theme": { "type": "string", "default": "auto" },
     "joinPolicy": { "type": "string", "default": "hidden" },
     "joinRole": { "type": "string", "default": "" }
   },

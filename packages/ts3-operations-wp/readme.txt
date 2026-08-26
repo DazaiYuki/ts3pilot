@@ -20,7 +20,10 @@ with HMAC-SHA256 signed requests over the WordPress HTTP API.
 Features in this release:
 * Status card via [ts3_status] shortcode or the TS3 Status Gutenberg block
 * Server-side cached public status (privacy-minimal fields only)
-* Client list and kick actions protected by dedicated capabilities
+* Live client list with kick / poke / move actions (REST + capability checks)
+* Full channel tree management: create, edit, move and delete
+* Users / Identity page: binding states and single-use challenges
+* Adaptive theming (light / dark) and optional collapsible channel tree
 * Pairing wizard for the ts3-manager agent (single-use pairing code)
 * Bounded audit log and redacted diagnostics
 
@@ -43,4 +46,5 @@ No. WordPress capabilities and TeamSpeak permissions are completely separate.
 == Changelog ==
 
 = 0.1.0 =
-* Initial MVP: status, clients, kick, pairing, audit log.
+* Initial MVP: status, clients (kick/poke/move), channels, identity, pairing,
+  audit log, adaptive front-end theming.

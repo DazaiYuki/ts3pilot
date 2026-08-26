@@ -25,12 +25,15 @@ final class Block {
 						'render_callback' => static function ( array $attributes ) use ( $status ): string {
 							return Shortcode::render(
 								array(
-									'show_name'    => $attributes['showName'] ? 'true' : 'false',
-									'show_online'  => $attributes['showOnline'] ? 'true' : 'false',
-									'show_max'     => $attributes['showMax'] ? 'true' : 'false',
-									'show_version' => $attributes['showVersion'] ? 'true' : 'false',
-									'join_policy'  => $attributes['joinPolicy'] ?? 'hidden',
-									'join_role'    => $attributes['joinRole'] ?? '',
+									'show_name'     => $attributes['showName'] ? 'true' : 'false',
+									'show_online'   => $attributes['showOnline'] ? 'true' : 'false',
+									'show_max'      => $attributes['showMax'] ? 'true' : 'false',
+									'show_version'  => $attributes['showVersion'] ? 'true' : 'false',
+									'show_channels' => $attributes['showChannels'] ? 'true' : 'false',
+									'collapsible'   => $attributes['collapsible'] ? 'true' : 'false',
+									'theme'         => $attributes['theme'] ?? 'auto',
+									'join_policy'   => $attributes['joinPolicy'] ?? 'hidden',
+									'join_role'     => $attributes['joinRole'] ?? '',
 								)
 							);
 						},

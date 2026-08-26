@@ -46,6 +46,104 @@ final class Client {
 	}
 
 	/**
+	 * @return array<string, mixed>
+	 */
+	public function status(): array {
+		return $this->request( 'GET', '/v1/ts3/status' );
+	}
+
+	/**
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function clients(): array {
+		$data = $this->request( 'GET', '/v1/ts3/clients' );
+		return is_array( $data ) ? $data : array();
+	}
+
+	/**
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function channels(): array {
+		$data = $this->request( 'GET', '/v1/ts3/channels' );
+		return is_array( $data ) ? $data : array();
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	public function kick_client( int $client_id, string $kick_from, string $reason = '' ): array {
+		return $this->request(
+			'POST',
+			'/v1/ts3/clients/kick',
+			array(
+				'clientId' => $client_id,
+				'kickFrom' => $kick_from,
+				'reason'   => $reason,
+			)
+		);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	public function poke_client( int $client_id, string $message ): array {
+		return $this->request(
+			'POST',
+			'/v1/ts3/clients/poke',
+			array(
+				'clientId' => $client_id,
+				'message'  => $message,
+			)
+		);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	public function move_client( int $client_id, int $channel_id ): array {
+		return $this->request(
+			'POST',
+			'/v1/ts3/clients/move',
+			array(
+				'clientId'  => $client_id,
+				'channelId' => $channel_id,
+			)
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $input
+	 * @return array<string, mixed>
+	 */
+	public function channel_create( array $input ): array {
+		return $this->request( 'POST', '/v1/ts3/channels/create', $input );
+	}
+
+	/**
+	 * @param array<string, mixed> $input
+	 * @return array<string, mixed>
+	 */
+	public function channel_edit( array $input ): array {
+		return $this->request( 'POST', '/v1/ts3/channels/edit', $input );
+	}
+
+	/**
+	 * @param array<string, mixed> $input
+	 * @return array<string, mixed>
+	 */
+	public function channel_delete( array $input ): array {
+		return $this->request( 'POST', '/v1/ts3/channels/delete', $input );
+	}
+
+	/**
+	 * @param array<string, mixed> $input
+	 * @return array<string, mixed>
+	 */
+	public function channel_move( array $input ): array {
+		return $this->request( 'POST', '/v1/ts3/channels/move', $input );
+	}
+
+	/**
 	 * @param array<string, mixed> $body
 	 * @return array<string, mixed>
 	 */

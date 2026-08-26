@@ -11,6 +11,7 @@ namespace Ts3Ops;
 
 use Ts3Ops\Admin\Menu;
 use Ts3Ops\Admin\Actions;
+use Ts3Ops\Admin\Assets;
 use Ts3Ops\Agent\Client;
 use Ts3Ops\Frontend\Block;
 use Ts3Ops\Frontend\Shortcode;
@@ -32,6 +33,7 @@ final class Plugin {
 	public function register(): void {
 		register_activation_hook( TS3OPS_PLUGIN_FILE, array( Capabilities::class, 'grant_defaults' ) );
 		Actions::register();
+		Assets::register();
 
 		add_action( 'init', array( Capabilities::class, 'register' ) );
 		add_action( 'init', array( $this, 'register_services' ) );

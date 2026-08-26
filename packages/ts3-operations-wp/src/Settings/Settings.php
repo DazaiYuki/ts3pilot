@@ -62,6 +62,8 @@ final class Settings {
 			'show_online'              => Sanitizer::boolish( $input['show_online'] ?? $current['show_online'] ),
 			'show_max'                 => Sanitizer::boolish( $input['show_max'] ?? $current['show_max'] ),
 			'show_version'             => Sanitizer::boolish( $input['show_version'] ?? $current['show_version'] ),
+			'show_channels'            => Sanitizer::boolish( $input['show_channels'] ?? $current['show_channels'] ),
+			'theme'                    => in_array( (string) ( $input['theme'] ?? 'auto' ), array( 'auto', 'light', 'dark' ), true ) ? (string) $input['theme'] : 'auto',
 			'delete_data_on_uninstall' => Sanitizer::boolish( $input['delete_data_on_uninstall'] ?? false ),
 		);
 	}

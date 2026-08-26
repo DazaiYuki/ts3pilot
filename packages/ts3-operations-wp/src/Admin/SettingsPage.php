@@ -31,6 +31,18 @@ final class SettingsPage {
 		$this->field( 'agent_node_id', 'Agent node ID', esc_attr( (string) $settings['agent_node_id'] ) );
 		$this->field( 'status_cache_ttl', 'Status cache TTL (seconds)', esc_attr( (string) $settings['status_cache_ttl'] ) );
 		$this->field( 'join_url', 'Join URL (optional, e.g. ts3server://)', esc_attr( (string) $settings['join_url'] ) );
+		echo '<p><label><input type="checkbox" name="ts3cops_settings[show_channels]" value="1" '
+			. checked( ! empty( $settings['show_channels'] ), true, false ) . ' /> Show public channel tree</label></p>';
+		echo '<p><label>Theme: <select name="ts3cops_settings[theme]">';
+		foreach ( array(
+			'auto'  => 'Auto (system)',
+			'light' => 'Light',
+			'dark'  => 'Dark',
+		) as $value => $label ) {
+			echo '<option value="' . esc_attr( $value ) . '" ' . selected( (string) $settings['theme'], $value, false ) . '>'
+				. esc_html( $label ) . '</option>';
+		}
+		echo '</select></label></p>';
 		echo '<p><label><input type="checkbox" name="ts3cops_settings[delete_data_on_uninstall]" value="1" '
 			. checked( ! empty( $settings['delete_data_on_uninstall'] ), true, false ) . ' /> Delete plugin data on uninstall</label></p>';
 		submit_button();

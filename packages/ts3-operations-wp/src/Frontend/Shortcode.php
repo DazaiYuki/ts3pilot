@@ -3,6 +3,8 @@
  * [ts3_status] shortcode with strict attribute whitelisting.
  *
  * All TS3-derived strings are treated as untrusted and escaped on output.
+ * Data always comes from the server-side cached snapshot; the browser never
+ * talks to the agent directly.
  *
  * @package Ts3Ops
  */
@@ -11,6 +13,7 @@ declare(strict_types=1);
 
 namespace Ts3Ops\Frontend;
 
+use Ts3Ops\Identity\Mapping;
 use Ts3Ops\Security\Sanitizer;
 use Ts3Ops\Services\StatusService;
 
@@ -29,33 +32,41 @@ final class Shortcode {
 		if ( null === self::$status ) {
 			return '';
 		}
-		$attributes   = shortcode_atts(
+		$theme         = self::$status->theme_name();
+		$attributes    = shortcode_atts(
 			array(
-				'show_name'    => 'true',
-				'show_online'  => 'true',
-				'show_max'     => 'true',
-				'show_version' => 'false',
-				'join_policy'  => 'hidden',
-				'join_role'    => '',
-				'class'        => 'ts3-status-card',
+				'show_name'     => 'true',
+				'show_online'   => 'true',
+				'show_max'      => 'true',
+				'show_version'  => 'false',
+				'show_channels' => self::$status->show_channels_enabled() ? 'true' : 'false',
+				'collapsible'   => 'false',
+				'theme'         => $theme,
+				'join_policy'   => 'hidden',
+				'join_role'     => '',
+				'class'         => 'ts3-status-card',
 			),
 			$attributes,
 			'ts3_status'
 		);
-		$show_name    = filter_var( $attributes['show_name'], FILTER_VALIDATE_BOOLEAN );
-		$show_online  = filter_var( $attributes['show_online'], FILTER_VALIDATE_BOOLEAN );
-		$show_max     = filter_var( $attributes['show_max'], FILTER_VALIDATE_BOOLEAN );
-		$show_version = filter_var( $attributes['show_version'], FILTER_VALIDATE_BOOLEAN );
-		$join_policy  = Sanitizer::join_policy( (string) $attributes['join_policy'] );
-		$join_role    = Sanitizer::role_name( (string) $attributes['join_role'] );
-		$class        = sanitize_html_class( (string) $attributes['class'] );
+		$show_name     = filter_var( $attributes['show_name'], FILTER_VALIDATE_BOOLEAN );
+		$show_online   = filter_var( $attributes['show_online'], FILTER_VALIDATE_BOOLEAN );
+		$show_max      = filter_var( $attributes['show_max'], FILTER_VALIDATE_BOOLEAN );
+		$show_version  = filter_var( $attributes['show_version'], FILTER_VALIDATE_BOOLEAN );
+		$show_channels = filter_var( $attributes['show_channels'], FILTER_VALIDATE_BOOLEAN );
+		$collapsible   = filter_var( $attributes['collapsible'], FILTER_VALIDATE_BOOLEAN );
+		$theme_value   = in_array( (string) $attributes['theme'], array( 'auto', 'light', 'dark' ), true ) ? (string) $attributes['theme'] : 'auto';
+		$join_policy   = Sanitizer::join_policy( (string) $attributes['join_policy'] );
+		$join_role     = Sanitizer::role_name( (string) $attributes['join_role'] );
+		$class         = sanitize_html_class( (string) $attributes['class'] );
 
 		$snapshot = self::$status->get_snapshot();
 		if ( ! empty( $snapshot['error'] ) ) {
-			return '<div class="' . esc_attr( $class ) . ' ts3-status-error">' . esc_html__( '暂时无法获取状态', 'ts3-operations' ) . '</div>';
+			return '<div class="' . esc_attr( $class ) . ' ts3-status-error" data-ts3-theme="' . esc_attr( $theme_value ) . '">'
+				. esc_html__( '暂时无法获取状态', 'ts3-operations' ) . '</div>';
 		}
 
-		$html = '<div class="' . esc_attr( $class ) . '">';
+		$html = '<div class="' . esc_attr( $class ) . '" data-ts3-theme="' . esc_attr( $theme_value ) . '">';
 		if ( $show_name ) {
 			$html .= '<div class="ts3-status-name">' . esc_html( (string) ( $snapshot['name'] ?? '' ) ) . '</div>';
 		}
@@ -68,8 +79,48 @@ final class Shortcode {
 		if ( $show_version && ! empty( $snapshot['version'] ) ) {
 			$html .= '<div class="ts3-status-version">' . esc_html( (string) $snapshot['version'] ) . '</div>';
 		}
+		if ( $show_channels ) {
+			$html .= self::render_channels( $collapsible );
+		}
 		$html .= self::join_button( $join_policy, $join_role );
 		$html .= '</div>';
+		return $html;
+	}
+
+	private static function render_channels( bool $collapsible ): string {
+		$channels = self::$status->get_channels_snapshot();
+		if ( empty( $channels ) || isset( $channels['error'] ) ) {
+			return '';
+		}
+		$by_parent = array();
+		foreach ( $channels as $channel ) {
+			$parent                 = (int) ( $channel['parentId'] ?? 0 );
+			$by_parent[ $parent ][] = $channel;
+		}
+		$content = '<ul class="ts3-status-channels">' . self::render_tree( $by_parent, 0 ) . '</ul>';
+		if ( $collapsible ) {
+			return '<details class="ts3-status-channels-wrap"><summary>' . esc_html__( 'Channels', 'ts3-operations' ) . '</summary>' . $content . '</details>';
+		}
+		return $content;
+	}
+
+	/**
+	 * @param array<int, array<int, array<string, mixed>>> $by_parent
+	 */
+	private static function render_tree( array $by_parent, int $parent_id ): string {
+		$html = '';
+		foreach ( $by_parent[ $parent_id ] ?? array() as $channel ) {
+			$name     = (string) ( $channel['name'] ?? '' );
+			$clients  = (int) ( $channel['clients'] ?? 0 );
+			$id       = (int) ( $channel['channelId'] ?? 0 );
+			$html    .= '<li class="ts3-status-channel"><span class="ts3-status-channel-name">' . esc_html( $name ) . '</span>'
+				. '<span class="ts3-status-channel-count">' . esc_html( (string) $clients ) . '</span>';
+			$children = self::render_tree( $by_parent, $id );
+			if ( '' !== $children ) {
+				$html .= '<ul>' . $children . '</ul>';
+			}
+			$html .= '</li>';
+		}
 		return $html;
 	}
 
@@ -86,7 +137,7 @@ final class Shortcode {
 		if ( 'verified_ts_user' === $policy ) {
 			$user_id = get_current_user_id();
 			if ( $user_id > 0 ) {
-				$mapping = \Ts3Ops\Identity\Mapping::get( $user_id );
+				$mapping = Mapping::get( $user_id );
 				if ( 'verified' === ( $mapping['status'] ?? '' ) ) {
 					return self::render_join_button();
 				}
@@ -100,8 +151,8 @@ final class Shortcode {
 	}
 
 	private static function render_join_button(): string {
-		$join_url = get_option( 'ts3cops_settings', array() );
-		$url      = is_array( $join_url ) ? (string) ( $join_url['join_url'] ?? '' ) : '';
+		$settings = get_option( 'ts3cops_settings', array() );
+		$url      = is_array( $settings ) ? (string) ( $settings['join_url'] ?? '' ) : '';
 		if ( '' === $url ) {
 			return '';
 		}

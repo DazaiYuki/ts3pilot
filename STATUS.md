@@ -11,7 +11,7 @@
 | ESLint（ts3-manager src/test） | 通过，0 warning |
 | `tsc -p tsconfig.json`（strict，含测试） | 通过 |
 | `node --test`（ts3-manager） | 47/47 通过 |
-| PHPUnit（WP 插件） | 15 测试 / 45 断言通过 |
+| PHPUnit（WP 插件） | 28 测试 / 80 断言通过 |
 | PHP lint（全部 PHP 文件） | 33/33 通过 |
 | PHPCS（WordPress-Extra，含豁免项） | 通过 |
 | `tsc -p tsconfig.build.json`（dist 产物） | 通过，`dist/cli/index.js` 可运行 |
@@ -51,9 +51,12 @@
   channels、maintenance/restart；全部带 `permission_callback`。
 - 前台：`[ts3_status]` shortcode（属性白名单 + 输出转义 + join policy）；
   动态 Gutenberg Block（服务端渲染，无构建依赖）。
-- 后台：Dashboard、Clients（kick 双确认）、Maintenance（restart）、Settings
-  （Settings API + 配对向导）、Diagnostics（审计日志 + 脱敏配置）；
-  Channels/Users 为明确的占位页。
+- 后台：Dashboard、Clients（kick/poke/move + admin.js 实时刷新）、Channels
+  （完整频道树 + create/edit/move/delete + 二次确认）、Users/Identity
+  （绑定状态 + 一次性挑战码 + 状态流转）、Maintenance（restart）、Settings
+  （Settings API + 配对向导 + 频道/主题选项）、Diagnostics（审计日志）。
+- 前台：`[ts3_status]` 支持主题（auto/light/dark）、可折叠频道树、加入链接
+  策略；Gutenberg Block 同步支持；全部数据经服务端 Transient 缓存。
 - 身份模块：Mapping 状态机（unbound/pending/verified/revoked）+ 一次性
   Challenge（TTL、尝试上限、单次消费），Bot 验证通道为未来模块。
 - 审计日志：有界环形缓冲（500 条），不含凭据。
@@ -66,7 +69,7 @@
 | WebQuery 真实请求 | 门控 | 端点映射需对照官方文档验证后打开 `verified=true` |
 | ServerQuery 真实联调 | 需验证 | 协议契约测试已通过；与真实 TS3 的最终核对仍待 Docker/实机 |
 | install/update 执行管线 | 计划模式 | 需已验证官方源（URL+sha256）后实现下载/校验/替换/回滚 |
-| 频道创建/编辑/删除、服务器配置读写 | capability 已预留 | Mock 未实现对应动作，端点未开放 |
+| 服务器配置读写 | capability 已预留 | 尚未开放端点 |
 | 身份绑定 Bot 通道 / 加入链接生成 / 角色同步 | 设计+桩 | 需真实协议验证后实现 |
 | 多节点 | 单节点已实现 | 配置已按 Node 实体设计，扩展点明确 |
 | Gutenberg React 编辑器 UI | 基础动态块 | 标准 block 结构已建，完整 React UI 为后续 |

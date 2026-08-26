@@ -1,0 +1,101 @@
+.ts3-status-card {
+	--ts3-bg: #ffffff;
+	--ts3-fg: #1d2327;
+	--ts3-muted: #646970;
+	--ts3-border: #dcdcde;
+	--ts3-accent: #2271b1;
+	background: var(--ts3-bg);
+	color: var(--ts3-fg);
+	border: 1px solid var(--ts3-border);
+	border-radius: 8px;
+	padding: 14px 16px;
+	max-width: 360px;
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+.ts3-status-card[data-ts3-theme="dark"] {
+	--ts3-bg: #1d2327;
+	--ts3-fg: #f0f0f1;
+	--ts3-muted: #a7aaad;
+	--ts3-border: #3c434a;
+	--ts3-accent: #72aee6;
+}
+
+.ts3-status-card[data-ts3-theme="light"] {
+	--ts3-bg: #ffffff;
+	--ts3-fg: #1d2327;
+	--ts3-muted: #646970;
+	--ts3-border: #dcdcde;
+	--ts3-accent: #2271b1;
+}
+
+@media (prefers-color-scheme: dark) {
+	.ts3-status-card[data-ts3-theme="auto"] {
+		--ts3-bg: #1d2327;
+		--ts3-fg: #f0f0f1;
+		--ts3-muted: #a7aaad;
+		--ts3-border: #3c434a;
+		--ts3-accent: #72aee6;
+	}
+}
+
+.ts3-status-name {
+	font-weight: 600;
+	font-size: 15px;
+}
+
+.ts3-status-online::before {
+	content: "";
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: #00a32a;
+	margin-right: 6px;
+}
+
+.ts3-status-count,
+.ts3-status-version,
+.ts3-status-channel-count {
+	color: var(--ts3-muted);
+}
+
+.ts3-status-channels {
+	list-style: none;
+	margin: 8px 0 0;
+	padding-left: 0;
+}
+
+.ts3-status-channels ul {
+	list-style: none;
+	margin: 0;
+	padding-left: 14px;
+}
+
+.ts3-status-channel {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 2px 0;
+}
+
+.ts3-status-channels-wrap summary {
+	cursor: pointer;
+	color: var(--ts3-accent);
+	margin-top: 8px;
+}
+
+.ts3-status-join {
+	display: inline-block;
+	margin-top: 10px;
+	padding: 6px 14px;
+	background: var(--ts3-accent);
+	color: #ffffff;
+	border-radius: 4px;
+	text-decoration: none;
+}
+
+.ts3-status-error {
+	color: var(--ts3-muted);
+}

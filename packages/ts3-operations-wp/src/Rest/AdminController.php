@@ -13,6 +13,7 @@ use Ts3Ops\Agent\AgentException;
 use Ts3Ops\Agent\Client;
 use Ts3Ops\Audit\AuditLog;
 use Ts3Ops\Capabilities;
+use Ts3Ops\Identity\Mapping;
 use Ts3Ops\Security\Sanitizer;
 use Ts3Ops\Services\StatusService;
 use Ts3Ops\Settings\Repository;
@@ -74,11 +75,100 @@ final class AdminController {
 		);
 		register_rest_route(
 			Routes::NAMESPACE,
+			'/clients/poke',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'poke_client' ),
+				'permission_callback' => array( $this, 'can_clients' ),
+				'args'                => array(
+					'client_id' => array( 'required' => true ),
+					'message'   => array( 'required' => true ),
+				),
+			)
+		);
+		register_rest_route(
+			Routes::NAMESPACE,
+			'/clients/move',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'move_client' ),
+				'permission_callback' => array( $this, 'can_clients' ),
+				'args'                => array(
+					'client_id'  => array( 'required' => true ),
+					'channel_id' => array( 'required' => true ),
+				),
+			)
+		);
+		register_rest_route(
+			Routes::NAMESPACE,
 			'/channels',
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'channels' ),
 				'permission_callback' => array( $this, 'can_channels' ),
+			)
+		);
+		register_rest_route(
+			Routes::NAMESPACE,
+			'/channels/create',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'channel_create' ),
+				'permission_callback' => array( $this, 'can_channels' ),
+			)
+		);
+		register_rest_route(
+			Routes::NAMESPACE,
+			'/channels/edit',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'channel_edit' ),
+				'permission_callback' => array( $this, 'can_channels' ),
+			)
+		);
+		register_rest_route(
+			Routes::NAMESPACE,
+			'/channels/delete',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'channel_delete' ),
+				'permission_callback' => array( $this, 'can_channels' ),
+			)
+		);
+		register_rest_route(
+			Routes::NAMESPACE,
+			'/channels/move',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'channel_move' ),
+				'permission_callback' => array( $this, 'can_channels' ),
+			)
+		);
+		register_rest_route(
+			Routes::NAMESPACE,
+			'/identity/users',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'identity_users' ),
+				'permission_callback' => array( $this, 'can_users' ),
+			)
+		);
+		register_rest_route(
+			Routes::NAMESPACE,
+			'/identity/challenge',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'identity_challenge' ),
+				'permission_callback' => array( $this, 'can_users' ),
+			)
+		);
+		register_rest_route(
+			Routes::NAMESPACE,
+			'/identity/status',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'identity_status' ),
+				'permission_callback' => array( $this, 'can_users' ),
 			)
 		);
 		register_rest_route(
@@ -167,6 +257,38 @@ final class AdminController {
 		return new WP_REST_Response( array( 'ok' => true ) );
 	}
 
+	public function poke_client( WP_REST_Request $request ): WP_REST_Response {
+		$client_id = (int) $request->get_param( 'client_id' );
+		$message   = sanitize_text_field( (string) $request->get_param( 'message' ) );
+		if ( $client_id <= 0 || '' === $message || strlen( $message ) > 512 ) {
+			return new WP_REST_Response( array( 'error' => 'Invalid parameters.' ), 400 );
+		}
+		try {
+			$this->client->poke_client( $client_id, $message );
+		} catch ( AgentException $error ) {
+			AuditLog::append( 'poke', 'client:' . $client_id, 'failed', $error->error_code );
+			return new WP_REST_Response( array( 'error' => $error->getMessage() ), 502 );
+		}
+		AuditLog::append( 'poke', 'client:' . $client_id, 'success' );
+		return new WP_REST_Response( array( 'ok' => true ) );
+	}
+
+	public function move_client( WP_REST_Request $request ): WP_REST_Response {
+		$client_id  = (int) $request->get_param( 'client_id' );
+		$channel_id = (int) $request->get_param( 'channel_id' );
+		if ( $client_id <= 0 || $channel_id < 0 ) {
+			return new WP_REST_Response( array( 'error' => 'Invalid parameters.' ), 400 );
+		}
+		try {
+			$this->client->move_client( $client_id, $channel_id );
+		} catch ( AgentException $error ) {
+			AuditLog::append( 'move', 'client:' . $client_id, 'failed', $error->error_code );
+			return new WP_REST_Response( array( 'error' => $error->getMessage() ), 502 );
+		}
+		AuditLog::append( 'move', 'client:' . $client_id, 'success' );
+		return new WP_REST_Response( array( 'ok' => true ) );
+	}
+
 	public function channels(): WP_REST_Response {
 		try {
 			return new WP_REST_Response( array( 'channels' => $this->client->request( 'GET', '/v1/ts3/channels' ) ) );
@@ -186,6 +308,155 @@ final class AdminController {
 		return new WP_REST_Response( array( 'ok' => true ) );
 	}
 
+	public function channel_create( WP_REST_Request $request ): WP_REST_Response {
+		$name = sanitize_text_field( (string) $request->get_param( 'name' ) );
+		if ( '' === $name || strlen( $name ) > 100 ) {
+			return new WP_REST_Response( array( 'error' => 'Invalid channel name.' ), 400 );
+		}
+		try {
+			$result = $this->client->channel_create(
+				array(
+					'name'     => $name,
+					'parentId' => Sanitizer::positive_int( $request->get_param( 'parent_id' ), 0 ),
+					'order'    => Sanitizer::positive_int( $request->get_param( 'order' ), 0 ),
+				)
+			);
+		} catch ( AgentException $error ) {
+			AuditLog::append( 'channel.create', $name, 'failed', $error->error_code );
+			return new WP_REST_Response( array( 'error' => $error->getMessage() ), 502 );
+		}
+		AuditLog::append( 'channel.create', $name, 'success' );
+		return new WP_REST_Response(
+			array(
+				'ok'        => true,
+				'channelId' => (int) ( $result['channelId'] ?? 0 ),
+			)
+		);
+	}
+
+	public function channel_edit( WP_REST_Request $request ): WP_REST_Response {
+		$channel_id = (int) $request->get_param( 'channel_id' );
+		if ( $channel_id <= 0 ) {
+			return new WP_REST_Response( array( 'error' => 'Invalid channel id.' ), 400 );
+		}
+		$input = array( 'channelId' => $channel_id );
+		$name  = sanitize_text_field( (string) $request->get_param( 'name' ) );
+		$topic = sanitize_text_field( (string) $request->get_param( 'topic' ) );
+		if ( '' !== $name ) {
+			$input['name'] = $name;
+		}
+		if ( '' !== $topic ) {
+			$input['topic'] = $topic;
+		}
+		try {
+			$this->client->channel_edit( $input );
+		} catch ( AgentException $error ) {
+			AuditLog::append( 'channel.edit', 'channel:' . $channel_id, 'failed', $error->error_code );
+			return new WP_REST_Response( array( 'error' => $error->getMessage() ), 502 );
+		}
+		AuditLog::append( 'channel.edit', 'channel:' . $channel_id, 'success' );
+		return new WP_REST_Response( array( 'ok' => true ) );
+	}
+
+	public function channel_delete( WP_REST_Request $request ): WP_REST_Response {
+		$channel_id = (int) $request->get_param( 'channel_id' );
+		if ( $channel_id <= 0 ) {
+			return new WP_REST_Response( array( 'error' => 'Invalid channel id.' ), 400 );
+		}
+		try {
+			$this->client->channel_delete(
+				array(
+					'channelId' => $channel_id,
+					'force'     => Sanitizer::boolish( $request->get_param( 'force' ) ),
+				)
+			);
+		} catch ( AgentException $error ) {
+			AuditLog::append( 'channel.delete', 'channel:' . $channel_id, 'failed', $error->error_code );
+			return new WP_REST_Response( array( 'error' => $error->getMessage() ), 502 );
+		}
+		AuditLog::append( 'channel.delete', 'channel:' . $channel_id, 'success' );
+		return new WP_REST_Response( array( 'ok' => true ) );
+	}
+
+	public function channel_move( WP_REST_Request $request ): WP_REST_Response {
+		$channel_id = (int) $request->get_param( 'channel_id' );
+		if ( $channel_id <= 0 ) {
+			return new WP_REST_Response( array( 'error' => 'Invalid channel id.' ), 400 );
+		}
+		try {
+			$this->client->channel_move(
+				array(
+					'channelId' => $channel_id,
+					'parentId'  => Sanitizer::positive_int( $request->get_param( 'parent_id' ), 0 ),
+					'order'     => Sanitizer::positive_int( $request->get_param( 'order' ), 0 ),
+				)
+			);
+		} catch ( AgentException $error ) {
+			AuditLog::append( 'channel.move', 'channel:' . $channel_id, 'failed', $error->error_code );
+			return new WP_REST_Response( array( 'error' => $error->getMessage() ), 502 );
+		}
+		AuditLog::append( 'channel.move', 'channel:' . $channel_id, 'success' );
+		return new WP_REST_Response( array( 'ok' => true ) );
+	}
+
+	public function identity_users(): WP_REST_Response {
+		$users = get_users(
+			array(
+				'number' => 200,
+				'fields' => array( 'ID', 'user_login', 'display_name' ),
+			)
+		);
+		$rows  = array();
+		foreach ( $users as $user ) {
+			$id     = (int) $user->ID;
+			$rows[] = array(
+				'id'           => $id,
+				'login'        => sanitize_text_field( (string) $user->user_login ),
+				'display_name' => sanitize_text_field( (string) $user->display_name ),
+				'mapping'      => Mapping::get( $id ),
+			);
+		}
+		return new WP_REST_Response( array( 'users' => $rows ) );
+	}
+
+	public function identity_challenge( WP_REST_Request $request ): WP_REST_Response {
+		$user_id = (int) $request->get_param( 'user_id' );
+		if ( $user_id <= 0 ) {
+			return new WP_REST_Response( array( 'error' => 'Invalid user id.' ), 400 );
+		}
+		$code = \Ts3Ops\Identity\Challenge::start( $user_id );
+		AuditLog::append( 'identity.challenge', 'user:' . $user_id, 'success' );
+		return new WP_REST_Response(
+			array(
+				'ok'   => true,
+				'code' => $code,
+				'ttl'  => 600,
+			)
+		);
+	}
+
+	public function identity_status( WP_REST_Request $request ): WP_REST_Response {
+		$user_id = (int) $request->get_param( 'user_id' );
+		$status  = (string) $request->get_param( 'status' );
+		$allowed = array( 'unbound', 'pending', 'verified', 'revoked' );
+		if ( $user_id <= 0 || ! in_array( $status, $allowed, true ) ) {
+			return new WP_REST_Response( array( 'error' => 'Invalid parameters.' ), 400 );
+		}
+		$data = array( 'status' => $status );
+		if ( 'verified' === $status ) {
+			$ts3_uid = sanitize_text_field( (string) $request->get_param( 'ts3_uid' ) );
+			if ( '' === $ts3_uid || strlen( $ts3_uid ) > 128 ) {
+				return new WP_REST_Response( array( 'error' => 'TS3 UID is required for verified status.' ), 400 );
+			}
+			$data['ts3_uid'] = $ts3_uid;
+		}
+		if ( ! Mapping::set( $user_id, $data ) ) {
+			return new WP_REST_Response( array( 'error' => 'Could not update mapping.' ), 500 );
+		}
+		AuditLog::append( 'identity.status', 'user:' . $user_id . ':' . $status, 'success' );
+		return new WP_REST_Response( array( 'ok' => true ) );
+	}
+
 	public function can_view(): bool {
 		return current_user_can( Capabilities::MANAGE_VIEW );
 	}
@@ -200,5 +471,9 @@ final class AdminController {
 
 	public function can_maintenance(): bool {
 		return current_user_can( Capabilities::MANAGE_MAINTENANCE ) && current_user_can( Capabilities::MANAGE_SERVER );
+	}
+
+	public function can_users(): bool {
+		return current_user_can( Capabilities::MANAGE_USERS );
 	}
 }

@@ -46,8 +46,8 @@ final class Menu {
 					'Channels',
 					Capabilities::MANAGE_CHANNELS,
 					'ts3-operations-channels',
-					static function (): void {
-						echo '<div class="wrap"><h1>Channels</h1><p>频道树与管理操作将在下一迭代提供（Agent 能力模型已预留）。</p></div>';
+					static function () use ( $client ): void {
+						( new ChannelsPage( $client ) )->render();
 					}
 				);
 				add_submenu_page(
@@ -67,7 +67,7 @@ final class Menu {
 					Capabilities::MANAGE_USERS,
 					'ts3-operations-users',
 					static function (): void {
-						echo '<div class="wrap"><h1>Users / Identity</h1><p>身份绑定与挑战流程（unbound/pending/verified/revoked）将在后续迭代提供；状态模型与 Challenge 服务已实现。</p></div>';
+						( new UsersPage() )->render();
 					}
 				);
 				add_submenu_page(

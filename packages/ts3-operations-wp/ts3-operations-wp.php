@@ -21,6 +21,7 @@ defined( 'ABSPATH' ) || exit;
 define( 'TS3OPS_VERSION', '0.1.0' );
 define( 'TS3OPS_PLUGIN_FILE', __FILE__ );
 define( 'TS3OPS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'TS3OPS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 require_once TS3OPS_PLUGIN_DIR . 'src/Plugin.php';
 

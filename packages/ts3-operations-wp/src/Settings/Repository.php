@@ -24,6 +24,8 @@ final class Repository {
 		'show_online'              => true,
 		'show_max'                 => true,
 		'show_version'             => false,
+		'show_channels'            => false,
+		'theme'                    => 'auto',
 		'delete_data_on_uninstall' => false,
 	);
 

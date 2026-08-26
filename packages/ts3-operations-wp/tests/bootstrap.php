@@ -267,6 +267,22 @@ function wp_unslash( string $value ): string {
 	return $value;
 }
 
+function checked( $checked, $current = true, bool $echo = true ): string {
+	$result = $checked == $current ? 'checked="checked"' : '';
+	if ( $echo ) {
+		echo $result;
+	}
+	return $result;
+}
+
+function selected( $selected, $current = true, bool $echo = true ): string {
+	$result = $selected == $current ? 'selected="selected"' : '';
+	if ( $echo ) {
+		echo $result;
+	}
+	return $result;
+}
+
 class WP_Error {
 	public function __construct(
 		public readonly string $code = '',
@@ -276,4 +292,86 @@ class WP_Error {
 	public function get_error_message(): string {
 		return $this->message;
 	}
+}
+
+class WP_REST_Request {
+	/**
+	 * @var array<string, mixed>
+	 */
+	private array $params = array();
+
+	/**
+	 * @param array<string, mixed> $params
+	 */
+	public function __construct( array $params = array() ) {
+		$this->params = $params;
+	}
+
+	/**
+	 * @return mixed
+	 */
+	public function get_param( string $key ) {
+		return $this->params[ $key ] ?? null;
+	}
+
+	/**
+	 * @param mixed $value
+	 */
+	public function set_param( string $key, $value ): void {
+		$this->params[ $key ] = $value;
+	}
+}
+
+class WP_REST_Response {
+	/**
+	 * @param array<string, mixed> $data
+	 */
+	public function __construct(
+		private readonly array $data,
+		private readonly int $status = 200,
+	) {}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	public function get_data(): array {
+		return $this->data;
+	}
+
+	public function get_status(): int {
+		return $this->status;
+	}
+}
+
+class WP_REST_Server {
+	public const READABLE  = 'GET';
+	public const CREATABLE = 'POST';
+	public const EDITABLE  = 'POST, PUT, PATCH';
+	public const DELETABLE = 'DELETE';
+	public const ALLMETHODS = '*';
+}
+
+/**
+ * @param array<string, mixed> $args
+ * @return array<int, object>
+ */
+function get_users( array $args = array() ): array {
+	return $GLOBALS['__ts3cops_users'] ?? array();
+}
+
+function wp_enqueue_script( string $handle, string $src = '', array $deps = array(), string $ver = '', bool $in_footer = false ): void {
+}
+
+function wp_localize_script( string $handle, string $object_name, array $data ): void {
+}
+
+function wp_enqueue_style( string $handle, string $src = '', array $deps = array(), string $ver = '', string $media = 'all' ): void {
+}
+
+function get_current_screen(): ?object {
+	return $GLOBALS['__ts3cops_current_screen'] ?? null;
+}
+
+function rest_url( string $path = '' ): string {
+	return 'http://example.test/wp-json/' . $path;
 }
