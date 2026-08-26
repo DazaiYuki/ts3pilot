@@ -3,6 +3,7 @@ import type { Ts3Channel, Ts3Client, Ts3ServerStatus } from '../domain/models.ts
 import type { AppConfig } from '../domain/schemas.ts';
 import type {
   BanInput,
+  ClientDetails,
   ChannelCreateInput,
   ChannelDeleteInput,
   ChannelEditInput,
@@ -83,6 +84,10 @@ export class WebQueryTeamSpeakClient implements TeamSpeakClient {
 
   async clients(): Promise<Ts3Client[]> {
     return this.request<Ts3Client[]>(ENDPOINTS.clients);
+  }
+
+  async clientDetails(_clientId: number): Promise<ClientDetails> {
+    throw new AppError(ErrorCode.TS3_UNSUPPORTED, 'WebQuery client details require verified mappings; use ServerQuery or the mock client', { httpStatus: 501 });
   }
 
   async channels(): Promise<Ts3Channel[]> {

@@ -26,12 +26,12 @@ export async function runAgentCommand(ctx: CliContext): Promise<void> {
       new VerificationNotifier(ctx.config.nodeId, ctx.logger),
       ctx.logger.child({ component: 'identity' }),
       {
-        field: ctx.config.identity.verify.field,
+        fields: ctx.config.identity.verify.fields,
         maxMatchesPerCycle: ctx.config.identity.verify.maxMatchesPerCycle,
       },
     );
     verifier.start(ctx.config.identity.verify.pollIntervalMs);
-    printLine(`identity verification worker started (poll ${ctx.config.identity.verify.pollIntervalMs}ms, field=${ctx.config.identity.verify.field})`);
+    printLine(`identity verification worker started (poll ${ctx.config.identity.verify.pollIntervalMs}ms, fields=${ctx.config.identity.verify.fields.join(',')})`);
   }
   await new Promise<void>((resolve) => {
     const stop = (): void => {

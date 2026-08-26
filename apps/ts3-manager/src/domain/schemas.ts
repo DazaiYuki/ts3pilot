@@ -81,10 +81,18 @@ export interface LoggingConfig {
   json: boolean;
 }
 
+export type IdentityVerificationField = 'nickname' | 'client_description' | 'client_away_message';
+
+export const IDENTITY_VERIFICATION_FIELDS: readonly IdentityVerificationField[] = [
+  'nickname',
+  'client_description',
+  'client_away_message',
+];
+
 export interface IdentityVerifyConfig {
   enabled: boolean;
   pollIntervalMs: number;
-  field: 'nickname' | 'away' | 'nickname-away';
+  fields: readonly IdentityVerificationField[];
   maxMatchesPerCycle: number;
 }
 
@@ -165,7 +173,7 @@ export function defaultConfig(overrides: Partial<AppConfig> = {}): AppConfig {
       verify: {
         enabled: false,
         pollIntervalMs: 10000,
-        field: 'nickname',
+        fields: ['client_description', 'client_away_message', 'nickname'],
         maxMatchesPerCycle: 5,
       },
     },
@@ -197,6 +205,15 @@ export function validateConfig(value: unknown): AppConfig {
   const loggingRecord = expectRecord(record.logging ?? {}, 'config.logging');
   const identityRecord = expectRecord(record.identity ?? {}, 'config.identity');
   const verifyRecord = expectRecord(identityRecord.verify ?? {}, 'config.identity.verify');
+  const fields = expectStringArray(
+    verifyRecord.fields ?? ['client_description', 'client_away_message', 'nickname'],
+    'config.identity.verify.fields',
+  );
+  for (const field of fields) {
+    if (!(IDENTITY_VERIFICATION_FIELDS as readonly string[]).includes(field)) {
+      throw new AppError(ErrorCode.CONFIG, `Unknown identity verification field: ${field}`);
+    }
+  }
   const capabilities = expectStringArray(agentRecord.capabilities ?? defaultCapabilities(), 'config.agent.capabilities');
   for (const capability of capabilities) {
     if (!isCapability(capability)) {
@@ -251,7 +268,7 @@ export function validateConfig(value: unknown): AppConfig {
       verify: {
         enabled: expectBoolean(verifyRecord.enabled ?? false, 'config.identity.verify.enabled'),
         pollIntervalMs: expectNumber(verifyRecord.pollIntervalMs ?? 10000, 'config.identity.verify.pollIntervalMs', { integer: true, min: 2000, max: 600000 }),
-        field: expectEnum(verifyRecord.field ?? 'nickname', 'config.identity.verify.field', ['nickname', 'away', 'nickname-away'] as const),
+        fields: fields as IdentityVerificationField[],
         maxMatchesPerCycle: expectNumber(verifyRecord.maxMatchesPerCycle ?? 5, 'config.identity.verify.maxMatchesPerCycle', { integer: true, min: 1, max: 100 }),
       },
     },
@@ -403,6 +420,34 @@ export function validateSystemActionBody(value: unknown): SystemActionBody {
   const record = expectRecord(value, 'body');
   return {
     action: expectEnum(record.action, 'body.action', ['start', 'stop', 'restart', 'status'] as const),
+  };
+}
+
+export interface MaintenanceBackupBody {
+  destPath?: string;
+}
+
+export function validateMaintenanceBackupBody(value: unknown): MaintenanceBackupBody {
+  const record = expectRecord(value, 'body');
+  return {
+    destPath: optionalString(record.destPath, 'body.destPath', { max: 1024 }),
+  };
+}
+
+export interface MaintenanceRestoreBody {
+  archivePath: string;
+  destPath?: string;
+  dryRun?: boolean;
+  force?: boolean;
+}
+
+export function validateMaintenanceRestoreBody(value: unknown): MaintenanceRestoreBody {
+  const record = expectRecord(value, 'body');
+  return {
+    archivePath: expectString(record.archivePath, 'body.archivePath', { min: 1, max: 1024 }),
+    destPath: optionalString(record.destPath, 'body.destPath', { max: 1024 }),
+    dryRun: optionalBoolean(record.dryRun, 'body.dryRun'),
+    force: optionalBoolean(record.force, 'body.force'),
   };
 }
 

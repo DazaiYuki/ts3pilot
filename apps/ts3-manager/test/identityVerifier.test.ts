@@ -8,14 +8,16 @@ import { createLogger } from '../src/logging/logger.ts';
 import { sha256Hex } from '../src/security/secrets.ts';
 import { verifySignature, bodyHash } from '../src/security/hmac.ts';
 import type { Ts3Client } from '../src/domain/models.ts';
-import type { TeamSpeakClient, Ts3FeatureValue } from '../src/ts3/teamSpeakClient.ts';
+import type { ClientDetails, TeamSpeakClient, Ts3FeatureValue } from '../src/ts3/teamSpeakClient.ts';
 
 class FakeTs3Client implements TeamSpeakClient {
   readonly kind = 'mock' as const;
   private readonly clientList: Ts3Client[];
+  private readonly details: Map<number, ClientDetails>;
 
-  constructor(clientList: Ts3Client[]) {
+  constructor(clientList: Ts3Client[], details: Map<number, ClientDetails> = new Map()) {
     this.clientList = clientList;
+    this.details = details;
   }
 
   supports(feature: Ts3FeatureValue): boolean {
@@ -28,6 +30,10 @@ class FakeTs3Client implements TeamSpeakClient {
 
   async clients(): Promise<Ts3Client[]> {
     return this.clientList;
+  }
+
+  async clientDetails(clientId: number): Promise<ClientDetails> {
+    return this.details.get(clientId) ?? {};
   }
 
   async channels() {
@@ -191,17 +197,41 @@ test('identity verifier ignores expired challenges and supports away-message fie
 
   const ts3 = new FakeTs3Client([
     { clientId: 1, nickname: expiredCode, channelId: 1, clientType: 0, uniqueId: 'uid-1' },
-    { clientId: 2, nickname: 'Player', channelId: 1, clientType: 0, uniqueId: 'uid-2', away: true, awayMessage: `brb ${awayCode}` },
-  ]);
+    { clientId: 2, nickname: 'Player', channelId: 1, clientType: 0, uniqueId: 'uid-2' },
+  ], new Map([[2, { awayMessage: `brb ${awayCode}` }]]));
   const verifier = new ChallengeVerifier(
     store,
     ts3,
     new VerificationNotifier('node-1', createLogger('error', false)),
     createLogger('error', false),
-    { field: 'away' },
+    { fields: ['client_away_message'] },
   );
 
   const results = await verifier.verifyOnce();
   assert.equal(results.length, 1);
   assert.equal(results[0]?.wpUserId, 2);
+});
+
+test('identity verifier prioritizes client description over nickname', async () => {
+  const store = new ChallengeStore();
+  const descriptionCode = 'D1D1D1D1';
+  const nicknameCode = 'N2N2N2N2';
+  makeChallenge(store, descriptionCode, 11, { url: 'http://127.0.0.1:1/callback', secret: 'webhook-secret-value' });
+  makeChallenge(store, nicknameCode, 12, { url: 'http://127.0.0.1:1/callback', secret: 'webhook-secret-value' });
+
+  const ts3 = new FakeTs3Client(
+    [{ clientId: 1, nickname: `Player ${nicknameCode}`, channelId: 1, clientType: 0, uniqueId: 'uid-11' }],
+    new Map([[1, { description: `my bio ${descriptionCode}` }]]),
+  );
+  const verifier = new ChallengeVerifier(
+    store,
+    ts3,
+    new VerificationNotifier('node-1', createLogger('error', false)),
+    createLogger('error', false),
+    { fields: ['client_description', 'client_away_message', 'nickname'] },
+  );
+
+  const results = await verifier.verifyOnce();
+  assert.equal(results.length, 1);
+  assert.equal(results[0]?.wpUserId, 11);
 });

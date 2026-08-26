@@ -61,7 +61,7 @@ async function runWorker(ctx: CliContext, mode: string): Promise<void> {
   const store = new ChallengeStore();
   const notifier = new VerificationNotifier(ctx.config.nodeId, ctx.logger);
   const verifier = new ChallengeVerifier(store, ctx.ts3(), notifier, ctx.logger, {
-    field: ctx.config.identity.verify.field,
+    fields: ctx.config.identity.verify.fields,
     maxMatchesPerCycle: ctx.config.identity.verify.maxMatchesPerCycle,
   });
   if (mode === 'once') {
@@ -88,7 +88,7 @@ function runStatus(ctx: CliContext): void {
   const store = new ChallengeStore();
   const challenges = store.list();
   printLine(`identity verification: ${ctx.config.identity.verify.enabled ? 'enabled' : 'disabled'}`);
-  printLine(`field: ${ctx.config.identity.verify.field}`);
+  printLine(`fields: ${ctx.config.identity.verify.fields.join(', ')}`);
   printLine(`poll interval: ${ctx.config.identity.verify.pollIntervalMs}ms`);
   printLine(`challenges in memory: ${challenges.length}`);
 }

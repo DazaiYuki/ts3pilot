@@ -2,6 +2,7 @@ import { AppError, ErrorCode } from '../domain/errors.ts';
 import type { Ts3Channel, Ts3Client, Ts3ServerStatus } from '../domain/models.ts';
 import type {
   BanInput,
+  ClientDetails,
   ChannelCreateInput,
   ChannelDeleteInput,
   ChannelEditInput,
@@ -14,7 +15,7 @@ import type {
 } from './teamSpeakClient.ts';
 
 const INITIAL_CLIENTS: Ts3Client[] = [
-  { clientId: 1, nickname: 'MockAlice', channelId: 1, clientType: 0, uniqueId: 'mockuid-alice', away: false },
+  { clientId: 1, nickname: 'MockAlice', channelId: 1, clientType: 0, uniqueId: 'mockuid-alice', away: false, description: 'Community member' },
   { clientId: 2, nickname: 'MockBob', channelId: 1, clientType: 0, uniqueId: 'mockuid-bob', away: true, awayMessage: 'AFK - brb' },
   { clientId: 3, nickname: 'MockCarol', channelId: 2, clientType: 0, uniqueId: 'mockuid-carol', away: false },
   { clientId: 4, nickname: 'MockServerQuery', channelId: 0, clientType: 1, uniqueId: 'mockuid-query' },
@@ -71,6 +72,14 @@ export class MockTeamSpeakClient implements TeamSpeakClient {
 
   async clients(): Promise<Ts3Client[]> {
     return this.clientList.map((client) => ({ ...client }));
+  }
+
+  async clientDetails(clientId: number): Promise<ClientDetails> {
+    const client = this.findClient(clientId);
+    return {
+      description: client.description,
+      awayMessage: client.awayMessage,
+    };
   }
 
   async channels(): Promise<Ts3Channel[]> {

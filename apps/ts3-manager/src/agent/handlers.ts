@@ -1,5 +1,6 @@
 import { hasCapability } from '../domain/capabilities.ts';
 import { AppError, ErrorCode } from '../domain/errors.ts';
+import { join } from 'node:path';
 import type { HealthInfo } from '../domain/models.ts';
 import {
   validateChannelCreateBody,
@@ -9,6 +10,8 @@ import {
   validateIdentityChallengeRegisterBody,
   validateBanBody,
   validateKickBody,
+  validateMaintenanceBackupBody,
+  validateMaintenanceRestoreBody,
   validateMoveBody,
   validatePairBody,
   validatePokeBody,
@@ -20,6 +23,7 @@ import type { Logger } from '../logging/logger.ts';
 import { pairingMatches } from '../security/pairing.ts';
 import { randomToken, sha256Hex } from '../security/secrets.ts';
 import type { ServiceManager } from '../system/serviceManager.ts';
+import { createBackupArchive, DEFAULT_BACKUP_INCLUDES, restoreBackupArchive } from '../system/backupEngine.ts';
 import type { TeamSpeakClient, Ts3FeatureValue } from '../ts3/teamSpeakClient.ts';
 import type { AgentState } from './state.ts';
 import type { RouteSpec } from './routeTable.ts';
@@ -164,6 +168,48 @@ export function maintenanceHandler(_ctx: HandlerContext): HandlerResult {
     'Maintenance operations are planned but not implemented in this MVP; use the CLI for local backup/restore.',
     { httpStatus: 501 },
   );
+}
+
+export async function maintenanceBackupHandler(ctx: HandlerContext): Promise<HandlerResult> {
+  const body = validateMaintenanceBackupBody(ctx.body);
+  if (ctx.config.ts3.installPath.length === 0) {
+    throw new AppError(ErrorCode.CONFIG, 'ts3.installPath is not configured', { httpStatus: 400 });
+  }
+  let ts3Version: string | undefined;
+  try {
+    if (ctx.ts3.supports('status')) {
+      ts3Version = (await ctx.ts3.status()).version;
+    }
+  } catch {
+    // version is best-effort metadata
+  }
+  const destPath =
+    body.destPath ??
+    join(ctx.config.dataDir, 'backups', `ts3-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.tar.gz`);
+  const manifest = await createBackupArchive({
+    rootDir: ctx.config.ts3.installPath,
+    include: DEFAULT_BACKUP_INCLUDES,
+    archivePath: destPath,
+    ts3Version,
+  });
+  ctx.logger.info('backup created', { archivePath: destPath, files: manifest.files.length });
+  return { status: 200, data: { archivePath: destPath, manifest } };
+}
+
+export async function maintenanceRestoreHandler(ctx: HandlerContext): Promise<HandlerResult> {
+  const body = validateMaintenanceRestoreBody(ctx.body);
+  if (ctx.config.ts3.installPath.length === 0) {
+    throw new AppError(ErrorCode.CONFIG, 'ts3.installPath is not configured', { httpStatus: 400 });
+  }
+  const result = await restoreBackupArchive({
+    archivePath: body.archivePath,
+    targetRoot: body.destPath ?? ctx.config.ts3.installPath,
+    allowedRoot: ctx.config.ts3.installPath,
+    dryRun: body.dryRun,
+    force: body.force,
+  });
+  ctx.logger.warn('restore completed', { dryRun: result.dryRun, ok: result.ok });
+  return { status: result.ok ? 200 : 409, data: result };
 }
 
 export function pairHandler(ctx: HandlerContext): HandlerResult {

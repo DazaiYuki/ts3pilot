@@ -38,6 +38,11 @@ export interface PokeInput {
   message: string;
 }
 
+export interface ClientDetails {
+  description?: string;
+  awayMessage?: string;
+}
+
 export interface ChannelCreateInput {
   name: string;
   parentId?: number;
@@ -67,6 +72,7 @@ export interface TeamSpeakClient {
   supports(feature: Ts3FeatureValue): boolean;
   status(): Promise<Ts3ServerStatus>;
   clients(): Promise<Ts3Client[]>;
+  clientDetails(clientId: number): Promise<ClientDetails>;
   channels(): Promise<Ts3Channel[]>;
   channelCreate(input: ChannelCreateInput): Promise<{ channelId: number }>;
   channelEdit(input: ChannelEditInput): Promise<{ ok: true }>;

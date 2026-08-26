@@ -12,6 +12,7 @@ import { runIdentityCommand } from './commands/identity.ts';
 import { runLogsCommand } from './commands/logs.ts';
 import { runServiceCommand } from './commands/service.ts';
 import { runUpdateCommand } from './commands/update.ts';
+import { runSystemdCommand } from './commands/systemd.ts';
 import { runVersionCommand } from './commands/version.ts';
 import { createCliContext } from './context.ts';
 import { printError, printLine } from './print.ts';
@@ -35,6 +36,7 @@ Commands:
   install [--execute]         Print (or execute on Linux) the install plan
   adopt                       Analyze an existing TS3 instance (read-only)
   update [--execute]          Update pipeline (requires verified source)
+  systemd generate <ts3server|ts3-agent> [--out PATH] [--user U] [--install-path P]
   help                        Show this help
 
 Global options:
@@ -99,6 +101,9 @@ export async function main(argv: readonly string[]): Promise<number> {
         break;
       case 'update':
         runUpdateCommand(ctx, flags);
+        break;
+      case 'systemd':
+        runSystemdCommand(ctx, positionals.slice(1), flags);
         break;
       default:
         printError(`unknown command: ${command}`);

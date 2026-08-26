@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import test from 'node:test';
 import { startAgentServer, type AgentServerHandle } from '../src/agent/server.ts';
 import type { AppConfig } from '../src/domain/schemas.ts';
@@ -338,6 +339,55 @@ test('identity challenge register endpoint stores the challenge', async () => {
       signedHeaders('test-credential', 'POST', '/v1/identity/challenge', JSON.stringify({ ...JSON.parse(body) as object, wpUserId: 43 })),
     );
     assert.equal(denied.status, 401);
+  } finally {
+    await handle.close();
+    cleanupDir(dir);
+  }
+});
+
+test('maintenance backup and restore work through the API', async () => {
+  const dir = tempDir('agent-maint-real');
+  const installPath = join(dir, 'ts3');
+  mkdirSync(installPath, { recursive: true });
+  writeFileSync(join(installPath, 'ts3server.ini'), 'query_port=10011');
+  writeFileSync(join(installPath, 'ts3server.sqlitedb'), 'sqlite-db-bytes');
+  const { path } = writeTempConfig(dir, (config) => {
+    config.agent.enabled = true;
+    config.agent.credential = 'test-credential';
+    config.agent.host = '127.0.0.1';
+    config.ts3.installPath = installPath;
+    config.agent.capabilities = [...config.agent.capabilities, 'server.restore'];
+  });
+  const handle = await startAgentServer(
+    path,
+    {
+      ts3: new MockTeamSpeakClient(),
+      services: new MockServiceManager(readConfigFile(path)),
+      logger: createLogger('error', false),
+    },
+    { listenPort: 0 },
+  );
+  try {
+    const backupBody = JSON.stringify({ destPath: join(dir, 'backup.tar.gz') });
+    const backupRes = await request(handle, 'POST', '/v1/maintenance/backup', backupBody, signedHeaders('test-credential', 'POST', '/v1/maintenance/backup', backupBody));
+    assert.equal(backupRes.status, 200);
+    const backupPayload = (await backupRes.json()) as { data: { archivePath: string } };
+    assert.ok(existsSync(backupPayload.data.archivePath));
+
+    const dryBody = JSON.stringify({ archivePath: backupPayload.data.archivePath, destPath: installPath, dryRun: true });
+    const dryRes = await request(handle, 'POST', '/v1/maintenance/restore', dryBody, signedHeaders('test-credential', 'POST', '/v1/maintenance/restore', dryBody));
+    assert.equal(dryRes.status, 200);
+    const dryPayload = (await dryRes.json()) as { data: { ok: boolean; dryRun: boolean } };
+    assert.equal(dryPayload.data.ok, true);
+    assert.equal(dryPayload.data.dryRun, true);
+
+    const restoreBody = JSON.stringify({ archivePath: backupPayload.data.archivePath, destPath: installPath, force: true });
+    const restoreRes = await request(handle, 'POST', '/v1/maintenance/restore', restoreBody, signedHeaders('test-credential', 'POST', '/v1/maintenance/restore', restoreBody));
+    assert.equal(restoreRes.status, 200);
+    const restorePayload = (await restoreRes.json()) as { data: { ok: boolean; restoredFiles: string[] } };
+    assert.equal(restorePayload.data.ok, true);
+    assert.ok(restorePayload.data.restoredFiles.includes('ts3server.ini'));
+    assert.equal(readFileSync(join(installPath, 'ts3server.sqlitedb'), 'utf8'), 'sqlite-db-bytes');
   } finally {
     await handle.close();
     cleanupDir(dir);

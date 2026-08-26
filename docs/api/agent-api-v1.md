@@ -54,8 +54,8 @@ TS3COPS-HMAC-SHA256 v1
 | POST | `/v1/system/restart` | HMAC | `server.restart`（高风险） | 重启服务 |
 | GET | `/v1/system/status` | HMAC | `server.status` | 服务状态 |
 | POST | `/v1/maintenance/update` | HMAC | `server.update`（高风险） | 501 NOT_IMPLEMENTED（MVP） |
-| POST | `/v1/maintenance/backup` | HMAC | `server.backup` | 501 NOT_IMPLEMENTED（MVP） |
-| POST | `/v1/maintenance/restore` | HMAC | `server.restore`（高风险） | 501 NOT_IMPLEMENTED（MVP） |
+| POST | `/v1/maintenance/backup` | HMAC | `server.backup` | 创建真实 tar.gz 备份 + manifest |
+| POST | `/v1/maintenance/restore` | HMAC | `server.restore`（高风险） | 恢复/预检（dry-run），需 force=true |
 | POST | `/v1/agent/pair` | 配对码 | `agent.pair` | 完成配对，返回长期 credential（一次性） |
 | POST | `/v1/agent/rotate-secret` | HMAC | `agent.rotate-secret` | 轮换 credential |
 | POST | `/v1/agent/unpair` | HMAC | `agent.unpair` | 吊销 credential |
@@ -101,6 +101,26 @@ TS3COPS-HMAC-SHA256 v1
 ```json
 { "channelId": 10, "parentId": 2, "order": 1 }
 ```
+
+### POST /v1/maintenance/backup
+
+```json
+{ "destPath": "/srv/backups/ts3-2026-01-01.tar.gz" }
+```
+
+成功：`{ "ok": true, "data": { "archivePath": "...", "manifest": { ... } } }`。
+默认备份 `ts3server.sqlitedb`、`ts3server.ini`、`files/`、license 文件；
+manifest 记录 sha256/大小/TS3 版本/时间戳。
+
+### POST /v1/maintenance/restore
+
+```json
+{ "archivePath": "/srv/backups/ts3-2026-01-01.tar.gz", "destPath": "/srv/ts3", "dryRun": true }
+```
+
+`dryRun: true` 只做 manifest/hash/权限预检，不写盘；真实恢复需
+`"force": true`（且 capability `server.restore` 需显式授予）。恢复目标必须
+位于配置的 TS3 安装根目录内；路径穿越/符号链接条目一律拒绝。
 
 ### POST /v1/agent/pair
 

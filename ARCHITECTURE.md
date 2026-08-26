@@ -33,7 +33,9 @@
 - `src/config/` — 集中配置（默认端口全部在此层，业务代码不硬编码端口）。
 - `src/security/` — HMAC 协议、配对、nonce、令牌桶限流、secret 生成。
 - `src/system/` — `ServiceManager` 接口 + `mock` / `systemd` / `script` provider；
-  唯一的进程执行入口 `processRunner.ts` 只接受固定参数数组，绝不使用 shell。
+  唯一的进程执行入口 `processRunner.ts` 只接受固定参数数组，绝不使用 shell；
+  `backupEngine.ts` 提供真实 tar.gz 归档/恢复（manifest+sha256、路径沙箱、
+  dry-run 预检）；`systemdGenerator.ts` 生成加固 unit。
 - `src/ts3/` — `TeamSpeakClient` 接口 + `mock` / `webquery` / `serverquery`
   实现；WebQuery 端点映射在未对照官方文档验证前一律拒绝执行。
   ServerQuery 拆分为纯协议层（命令组装/响应解析/通知分离）与长连接层
@@ -159,7 +161,9 @@ Agent Worker 轮询 clientlist → 命中挑战码 → 单次消费 → 读取 c
 
 防暴力：挑战码 10 分钟过期、单次消费、尝试锁定；回调校验 HMAC + 时间窗 +
 node 身份；昵称匹配使用 token 边界，避免误撞。`away` 字段匹配与 Bot 私聊通道
-为后续可选项（`identity.verify.field` 已预留）。
+为后续可选项。验证源按 `identity.verify.fields` 优先级读取
+`client_description` / `client_away_message` / `nickname`（默认 description
+优先，避免 TS3 昵称 30 字符上限与防刷屏限制）。
 管理员 → WP Clients 页 → REST POST /clients/kick
       → permission_callback（manage_ts3_clients）
       → Agent POST /v1/ts3/clients/kick（HMAC + capability ts3.clients.kick）

@@ -6,6 +6,7 @@ import { ServerQueryConnection } from './serverQueryConnection.ts';
 import { assertOk } from './serverQueryProtocol.ts';
 import type {
   BanInput,
+  ClientDetails,
   ChannelCreateInput,
   ChannelDeleteInput,
   ChannelEditInput,
@@ -91,6 +92,15 @@ export class ServerQueryTeamSpeakClient implements TeamSpeakClient {
       uniqueId: entry.client_unique_identifier !== undefined ? unescapeQueryValue(entry.client_unique_identifier) : undefined,
       away: entry.client_away === '1',
     }));
+  }
+
+  async clientDetails(clientId: number): Promise<ClientDetails> {
+    const response = assertOk(await (await this.conn()).command('clientinfo', { clid: clientId }));
+    const first = response.entries[0] ?? {};
+    return {
+      description: first.client_description !== undefined ? unescapeQueryValue(first.client_description) : undefined,
+      awayMessage: first.client_away_message !== undefined ? unescapeQueryValue(first.client_away_message) : undefined,
+    };
   }
 
   async channels(): Promise<Ts3Channel[]> {

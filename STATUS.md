@@ -10,7 +10,7 @@
 | `composer install`（WP 插件开发依赖） | 通过（30 包） |
 | ESLint（ts3-manager src/test） | 通过，0 warning |
 | `tsc -p tsconfig.json`（strict，含测试） | 通过 |
-| `node --test`（ts3-manager） | 62/62 通过 |
+| `node --test`（ts3-manager） | 73/73 通过 |
 | PHPUnit（WP 插件） | 39 测试 / 100 断言通过 |
 | PHP lint（全部 PHP 文件） | 33/33 通过 |
 | PHPCS（WordPress-Extra，含豁免项） | 通过 |
@@ -41,6 +41,15 @@
   完成握手/命令/通知/登录失败契约测试。
 - 备份/恢复：目录复制 + manifest（sha256 校验和）+ 路径逃逸防护 +
   开发模式破坏性操作开关（`TS3_MANAGER_ALLOW_DESTRUCTIVE`）。
+- 运维底座（本轮）：`system/backupEngine.ts` 真实 tar.gz 归档（ustar +
+  gzip，零依赖）与恢复引擎（manifest 校验、dry-run 预检、路径沙箱、
+  拒绝 `..`/绝对路径/符号链接）；`system/systemdGenerator.ts` 生成
+  ts3server/ts3-agent 加固 unit（NoNewPrivileges/ProtectSystem=strict/
+  PrivateTmp/ProtectHome=read-only 等）；Agent maintenance backup/restore
+  已从 501 变为真实实现（restore 需 force + 高风险 capability）。
+- 身份核验优化（本轮）：验证源改为 `identity.verify.fields` 多字段优先级
+  （client_description → client_away_message → nickname），客户端详情经
+  `clientinfo` 获取，避免昵称截断/防刷屏问题。
 
 ### ts3-operations-wp（WP 插件，`plugins/ts3-operations-wp`）
 
@@ -68,7 +77,7 @@
 
 | 项目 | 状态 | 说明 |
 | --- | --- | --- |
-| Agent maintenance update/backup/restore | 501 | CLI backup/restore 已真实可用；Agent 端点留待后续 |
+| Agent maintenance update | 501 | update 管线仍待已验证官方源；backup/restore 已真实实现 |
 | WebQuery 真实请求 | 门控 | 端点映射需对照官方文档验证后打开 `verified=true` |
 | ServerQuery 真实联调 | 需验证 | 协议契约测试已通过；与真实 TS3 的最终核对仍待 Docker/实机 |
 | install/update 执行管线 | 计划模式 | 需已验证官方源（URL+sha256）后实现下载/校验/替换/回滚 |

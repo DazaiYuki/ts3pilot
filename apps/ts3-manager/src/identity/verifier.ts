@@ -1,18 +1,19 @@
 import { AppError, ErrorCode } from '../domain/errors.ts';
 import type { Ts3Client } from '../domain/models.ts';
+import type { IdentityVerificationField } from '../domain/schemas.ts';
 import type { Logger } from '../logging/logger.ts';
-import type { TeamSpeakClient } from '../ts3/teamSpeakClient.ts';
+import type { ClientDetails, TeamSpeakClient } from '../ts3/teamSpeakClient.ts';
 import type { ChallengeStore, IdentityChallenge } from './challengeStore.ts';
 import type { VerificationNotifier, VerificationResult } from './notifier.ts';
 
 export interface IdentityVerifierOptions {
-  field: 'nickname' | 'away' | 'nickname-away';
+  fields: readonly IdentityVerificationField[];
   maxMatchesPerCycle: number;
   maxAttemptsPerChallenge: number;
 }
 
 const DEFAULT_OPTIONS: IdentityVerifierOptions = {
-  field: 'nickname',
+  fields: ['client_description', 'client_away_message', 'nickname'],
   maxMatchesPerCycle: 5,
   maxAttemptsPerChallenge: 10,
 };
@@ -55,9 +56,10 @@ export class ChallengeVerifier {
     }
 
     const results: VerificationResult[] = [];
+    const detailsCache = new Map<number, ClientDetails>();
     for (const client of clients) {
       if (client.clientType !== 0 || results.length >= this.options.maxMatchesPerCycle) continue;
-      const candidates = this.extractCodes(client);
+      const candidates = await this.extractCandidates(client, detailsCache);
       let challenge: IdentityChallenge | undefined;
       for (const code of candidates) {
         const found = this.store.findActive(code, now);
@@ -118,16 +120,28 @@ export class ChallengeVerifier {
     }
   }
 
-  private extractCodes(client: Ts3Client): string[] {
+  private async extractCandidates(client: Ts3Client, detailsCache: Map<number, ClientDetails>): Promise<string[]> {
     const codes: string[] = [];
-    const field = this.options.field;
-    const nickname = client.nickname;
-    const away = client.awayMessage ?? '';
-    if (field === 'nickname' || field === 'nickname-away') {
-      codes.push(...findTokens(nickname));
-    }
-    if (field === 'away' || field === 'nickname-away') {
-      codes.push(...findTokens(away));
+    for (const field of this.options.fields) {
+      if (field === 'nickname') {
+        codes.push(...findTokens(client.nickname));
+        continue;
+      }
+      let details = detailsCache.get(client.clientId);
+      if (details === undefined) {
+        try {
+          details = await this.ts3.clientDetails(client.clientId);
+        } catch {
+          details = {};
+        }
+        detailsCache.set(client.clientId, details);
+      }
+      if (field === 'client_description' && details.description !== undefined) {
+        codes.push(...findTokens(details.description));
+      }
+      if (field === 'client_away_message' && details.awayMessage !== undefined) {
+        codes.push(...findTokens(details.awayMessage));
+      }
     }
     return codes;
   }
