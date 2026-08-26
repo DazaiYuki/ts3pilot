@@ -1,0 +1,16 @@
+node_modules/
+.npm-cache/
+dist/
+coverage/
+tmp/
+.env
+.env.*
+!.env.example
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+packages/ts3-operations-wp/vendor/
+packages/ts3-operations-wp/.phpunit.result.cache
+packages/ts3-manager/*.tsbuildinfo
+packages/ts3-operations-wp/build/

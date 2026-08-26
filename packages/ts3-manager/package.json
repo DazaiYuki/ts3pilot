@@ -1,0 +1,27 @@
+{
+  "name": "@ts3cops/ts3-manager",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first TeamSpeak 3 server management CLI and controlled Host Control Plane agent.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "bin": {
+    "ts3-manager": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "lint": "eslint src test --max-warnings 0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.0.0",
+    "typescript": "^5.8.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}

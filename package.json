@@ -1,0 +1,24 @@
+{
+  "name": "ts3-community-ops-suite",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TS3 Community Operations Suite — local-first TeamSpeak 3 management toolchain (CLI/Agent) with an optional WordPress control plane.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "check-env": "node scripts/check-env.mjs",
+    "lint": "eslint packages/ts3-manager/src packages/ts3-manager/test --max-warnings 0",
+    "typecheck": "npm run typecheck --workspace @ts3cops/ts3-manager",
+    "test": "npm run test --workspace @ts3cops/ts3-manager && npm run test --workspace @ts3cops/ts3-operations-wp",
+    "build": "npm run build --workspace @ts3cops/ts3-manager",
+    "verify": "node scripts/verify.mjs",
+    "cli": "node packages/ts3-manager/src/cli/index.ts",
+    "package": "node scripts/package.mjs"
+  }
+}

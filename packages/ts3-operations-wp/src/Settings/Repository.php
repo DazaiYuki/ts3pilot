@@ -1,0 +1,64 @@
+<?php
+/**
+ * Options repository for plugin settings.
+ *
+ * @package Ts3Ops
+ */
+
+declare(strict_types=1);
+
+namespace Ts3Ops\Settings;
+
+final class Repository {
+	public const OPTION_NAME = 'ts3cops_settings';
+
+	private const DEFAULTS = array(
+		'agent_url'                => '',
+		'agent_credential'         => '',
+		'agent_node_id'            => '',
+		'status_cache_ttl'         => 10,
+		'join_policy'              => 'hidden',
+		'join_role'                => '',
+		'join_url'                 => '',
+		'show_name'                => true,
+		'show_online'              => true,
+		'show_max'                 => true,
+		'show_version'             => false,
+		'delete_data_on_uninstall' => false,
+	);
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	public function all(): array {
+		$stored = get_option( self::OPTION_NAME, array() );
+		if ( ! is_array( $stored ) ) {
+			$stored = array();
+		}
+		return array_merge( self::DEFAULTS, $stored );
+	}
+
+	/**
+	 * @return mixed
+	 */
+	public function get( string $key ) {
+		$all = $this->all();
+		return $all[ $key ] ?? null;
+	}
+
+	/**
+	 * @param mixed $value
+	 */
+	public function set( string $key, $value ): bool {
+		$all         = $this->all();
+		$all[ $key ] = $value;
+		return update_option( self::OPTION_NAME, $all );
+	}
+
+	/**
+	 * @param array<string, mixed> $values
+	 */
+	public function set_many( array $values ): bool {
+		return update_option( self::OPTION_NAME, array_merge( $this->all(), $values ) );
+	}
+}

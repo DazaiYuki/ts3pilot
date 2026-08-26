@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "ts3-operations/status",
+  "title": "TS3 Status",
+  "category": "widgets",
+  "icon": "format-status",
+  "description": "Show a TeamSpeak 3 server status card (server-side rendered, no agent credentials exposed).",
+  "keywords": [ "teamspeak", "ts3", "status" ],
+  "textdomain": "ts3-operations",
+  "attributes": {
+    "showName": { "type": "boolean", "default": true },
+    "showOnline": { "type": "boolean", "default": true },
+    "showMax": { "type": "boolean", "default": true },
+    "showVersion": { "type": "boolean", "default": false },
+    "joinPolicy": { "type": "string", "default": "hidden" },
+    "joinRole": { "type": "string", "default": "" }
+  },
+  "supports": {
+    "html": false
+  },
+  "editorScript": "file:./index.js"
+}
