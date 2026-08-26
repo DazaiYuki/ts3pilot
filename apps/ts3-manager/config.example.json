@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "nodeId": "REPLACE-WITH-GENERATED-NODE-ID",
+  "mode": "development",
+  "dataDir": "",
+  "ts3": {
+    "installPath": "",
+    "logDir": "",
+    "startScript": "ts3server_startscript.sh",
+    "voicePort": 9987,
+    "fileTransferPort": 30033,
+    "install": {
+      "sourceUrl": "",
+      "sha256": "",
+      "verified": false
+    },
+    "query": {
+      "rawPort": 10011,
+      "sshPort": 10022,
+      "username": "",
+      "password": "",
+      "webQuery": {
+        "enabled": false,
+        "httpPort": 10080,
+        "httpsPort": 10443,
+        "baseUrl": "",
+        "apiKey": "",
+        "authHeader": "x-api-key",
+        "pathPrefix": "/api/v1",
+        "verified": false
+      }
+    }
+  },
+  "agent": {
+    "enabled": false,
+    "host": "127.0.0.1",
+    "port": 17880,
+    "remoteMode": false,
+    "credential": "",
+    "capabilities": [],
+    "maxBodyBytes": 65536,
+    "clockSkewSec": 300
+  },
+  "system": {
+    "provider": "auto",
+    "unitName": "ts3server.service"
+  },
+  "logging": {
+    "level": "info",
+    "json": false
+  },
+  "identity": {
+    "verify": {
+      "enabled": false,
+      "pollIntervalMs": 10000,
+      "fields": ["client_description", "client_away_message", "nickname"],
+      "maxMatchesPerCycle": 5
+    }
+  }
+}

@@ -183,9 +183,12 @@ Agent API 测试在 Windows 上真实跑通完整 HMAC/能力/限流/配对链�
 
 ## 8. 单节点与多节点
 
-配置围绕 Node 实体设计（`node_id`、endpoint、credential、capabilities）。
-当前 MVP 为单节点；多节点版仅需把 WP 设置从单个 URL/凭据扩展为 node 数组，
-Agent 侧无需改动。来自 Agent 的请求必须验证 node 身份，不能跨 node 信任。
+配置围绕 Node 实体设计（`node_id`、endpoint、credential、timeout、
+is_active）。WP 侧 `NodeRegistry` 支持多节点注册、每节点独立凭据与超时；
+后台 Node Switcher 切换活动节点，Dashboard/Clients/Channels/Maintenance
+与 REST 请求自动路由到当前节点（也支持 `node_id` 参数显式指定）。Agent
+请求始终使用对应节点的 credential 签名，跨节点复用凭据被测试禁止。
+旧版单节点设置自动迁移为 Legacy Node。
 
 ## 9. 发布与升级策略
 

@@ -12,6 +12,7 @@
 		icon: 'format-status',
 		category: 'widgets',
 		attributes: {
+			node: { type: 'string', default: '' },
 			showName: { type: 'boolean', default: true },
 			showOnline: { type: 'boolean', default: true },
 			showMax: { type: 'boolean', default: true },

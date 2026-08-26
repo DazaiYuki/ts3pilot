@@ -11,6 +11,7 @@ namespace Ts3Ops\Admin;
 
 use Ts3Ops\Agent\Client;
 use Ts3Ops\Agent\Pairing;
+use Ts3Ops\Settings\NodeRegistry;
 use Ts3Ops\Settings\Repository;
 use Ts3Ops\Settings\Settings;
 
@@ -22,6 +23,7 @@ final class SettingsPage {
 
 	public function render(): void {
 		echo '<div class="wrap"><h1>TS3 Operations Settings</h1>';
+		$this->render_node_registry();
 		$this->render_pairing_wizard();
 		echo '<form method="post" action="options.php">';
 		settings_fields( Settings::GROUP );
@@ -47,6 +49,90 @@ final class SettingsPage {
 			. checked( ! empty( $settings['delete_data_on_uninstall'] ), true, false ) . ' /> Delete plugin data on uninstall</label></p>';
 		submit_button();
 		echo '</form></div>';
+	}
+
+	private function render_node_registry(): void {
+		$this->render_registry_notice();
+		$registry = new NodeRegistry( $this->repository );
+		$nodes    = $registry->all();
+		$active   = $registry->active_id();
+		echo '<h2>Node Registry</h2>';
+		if ( count( $nodes ) === 0 ) {
+			echo '<p>' . esc_html__( 'No nodes configured yet. Pair a new agent below or add a node manually.', 'ts3-operations' ) . '</p>';
+		} else {
+			echo '<table class="widefat striped"><thead><tr>'
+				. '<th>Display name</th><th>Node ID</th><th>Endpoint</th><th>Timeout</th><th>Active</th><th>Actions</th>'
+				. '</tr></thead><tbody>';
+			foreach ( $nodes as $node_id => $node ) {
+				echo '<tr>';
+				echo '<td>' . esc_html( (string) ( $node['display_name'] ?? '' ) ) . '</td>';
+				echo '<td>' . esc_html( (string) $node_id ) . '</td>';
+				echo '<td>' . esc_html( (string) ( $node['endpoint'] ?? '' ) ) . '</td>';
+				echo '<td>' . esc_html( (string) ( $node['timeout'] ?? 8 ) ) . '</td>';
+				echo '<td>' . esc_html( (string) $node_id === $active ? 'yes' : 'no' ) . '</td>';
+				$actions = $this->node_edit_form( (string) $node_id, $node ) . $this->node_delete_form( (string) $node_id );
+				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML built from escaped fragments only.
+				echo '<td>' . $actions . '</td>';
+				echo '</tr>';
+			}
+			echo '</tbody></table>';
+		}
+		$this->node_add_form();
+	}
+
+	private function render_registry_notice(): void {
+		if ( ! isset( $_GET['ts3cops_result'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return;
+		}
+		$result   = sanitize_text_field( wp_unslash( $_GET['ts3cops_result'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$messages = array(
+			'node_added'   => 'Node added.',
+			'node_updated' => 'Node updated.',
+			'node_deleted' => 'Node deleted.',
+		);
+		if ( isset( $messages[ $result ] ) ) {
+			echo '<div class="notice notice-success"><p>' . esc_html( $messages[ $result ] ) . '</p></div>';
+		}
+	}
+
+	/**
+	 * @param array<string, mixed> $node
+	 */
+	private function node_edit_form( string $node_id, array $node ): string {
+		$html  = '<details class="ts3ops-inline-form"><summary>Edit</summary>';
+		$html .= '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		$html .= '<input type="hidden" name="action" value="ts3cops_node_update" />';
+		$html .= '<input type="hidden" name="node_id" value="' . esc_attr( $node_id ) . '" />';
+		wp_nonce_field( 'ts3cops_node_update_' . $node_id, 'ts3cops_nonce' );
+		$html .= '<p><label>Display name: <input type="text" name="display_name" value="' . esc_attr( (string) ( $node['display_name'] ?? '' ) ) . '" maxlength="128" /></label></p>';
+		$html .= '<p><label>Endpoint: <input type="text" name="endpoint" value="' . esc_attr( (string) ( $node['endpoint'] ?? '' ) ) . '" class="regular-text" /></label></p>';
+		$html .= '<p><label>Credential (leave blank to keep): <input type="password" name="credential" class="regular-text" /></label></p>';
+		$html .= '<p><label>Timeout: <input type="number" name="timeout" min="1" max="60" value="' . esc_attr( (string) ( $node['timeout'] ?? 8 ) ) . '" /></label></p>';
+		$html .= '<button class="button button-small" type="submit">Save</button></form></details>';
+		return $html;
+	}
+
+	private function node_delete_form( string $node_id ): string {
+		$html  = '<details class="ts3ops-inline-form"><summary>Delete</summary>';
+		$html .= '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" data-confirm data-confirm-msg="'
+			. esc_attr__( '确定删除该节点？', 'ts3-operations' ) . '">';
+		$html .= '<input type="hidden" name="action" value="ts3cops_node_delete" />';
+		$html .= '<input type="hidden" name="node_id" value="' . esc_attr( $node_id ) . '" />';
+		wp_nonce_field( 'ts3cops_node_delete_' . $node_id, 'ts3cops_nonce' );
+		$html .= '<button class="button button-link-delete" type="submit">Delete</button></form></details>';
+		return $html;
+	}
+
+	private function node_add_form(): void {
+		echo '<h3>' . esc_html__( 'Add node manually', 'ts3-operations' ) . '</h3>';
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<input type="hidden" name="action" value="ts3cops_node_add" />';
+		wp_nonce_field( 'ts3cops_node_add', 'ts3cops_nonce' );
+		echo '<p><label>Display name: <input type="text" name="display_name" maxlength="128" /></label></p>';
+		echo '<p><label>Endpoint: <input type="text" name="endpoint" class="regular-text" placeholder="http://127.0.0.1:17880" /></label></p>';
+		echo '<p><label>Timeout: <input type="number" name="timeout" min="1" max="60" value="8" /></label></p>';
+		echo '<button class="button button-secondary" type="submit">Add node</button>';
+		echo '</form>';
 	}
 
 	private function render_pairing_wizard(): void {

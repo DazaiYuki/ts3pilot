@@ -15,6 +15,7 @@ namespace Ts3Ops\Services;
 use Ts3Ops\Agent\AgentException;
 use Ts3Ops\Agent\Client;
 use Ts3Ops\Security\Sanitizer;
+use Ts3Ops\Settings\NodeRegistry;
 use Ts3Ops\Settings\Repository;
 
 final class StatusService {
@@ -29,14 +30,16 @@ final class StatusService {
 	/**
 	 * @return array<string, mixed>
 	 */
-	public function get_snapshot( bool $force = false ): array {
-		$ttl      = Sanitizer::positive_int( $this->repository->get( 'status_cache_ttl' ), 10 );
-		$snapshot = get_transient( self::TRANSIENT );
+	public function get_snapshot( bool $force = false, ?string $node_id = null ): array {
+		$ttl       = Sanitizer::positive_int( $this->repository->get( 'status_cache_ttl' ), 10 );
+		$cache_key = self::TRANSIENT . ( null === $node_id ? '' : '_' . substr( $node_id, 0, 16 ) );
+		$client    = null === $node_id ? $this->client : $this->client->for_node( $node_id );
+		$snapshot  = get_transient( $cache_key );
 		if ( false !== $snapshot && is_array( $snapshot ) && ! $force ) {
 			return $snapshot;
 		}
 		try {
-			$status = $this->client->request( 'GET', '/v1/ts3/status' );
+			$status = $client->request( 'GET', '/v1/ts3/status' );
 		} catch ( AgentException $error ) {
 			$snapshot = array(
 				'online'  => false,
@@ -44,7 +47,7 @@ final class StatusService {
 				'cached'  => false,
 				'updated' => time(),
 			);
-			set_transient( self::TRANSIENT, $snapshot, min( $ttl, 30 ) );
+			set_transient( $cache_key, $snapshot, min( $ttl, 30 ) );
 			return $snapshot;
 		}
 
@@ -58,21 +61,23 @@ final class StatusService {
 			'cached'      => true,
 			'updated'     => time(),
 		);
-		set_transient( self::TRANSIENT, $snapshot, $ttl );
+		set_transient( $cache_key, $snapshot, $ttl );
 		return $snapshot;
 	}
 
 	/**
 	 * @return array<int, array<string, mixed>>
 	 */
-	public function get_channels_snapshot( bool $force = false ): array {
-		$ttl      = Sanitizer::positive_int( $this->repository->get( 'status_cache_ttl' ), 10 );
-		$snapshot = get_transient( self::CHANNELS_TRANSIENT );
+	public function get_channels_snapshot( bool $force = false, ?string $node_id = null ): array {
+		$ttl       = Sanitizer::positive_int( $this->repository->get( 'status_cache_ttl' ), 10 );
+		$cache_key = self::CHANNELS_TRANSIENT . ( null === $node_id ? '' : '_' . substr( $node_id, 0, 16 ) );
+		$client    = null === $node_id ? $this->client : $this->client->for_node( $node_id );
+		$snapshot  = get_transient( $cache_key );
 		if ( is_array( $snapshot ) && ! $force ) {
 			return $snapshot;
 		}
 		try {
-			$channels = $this->client->request( 'GET', '/v1/ts3/channels' );
+			$channels = $client->request( 'GET', '/v1/ts3/channels' );
 		} catch ( AgentException $error ) {
 			return array( 'error' => true );
 		}
@@ -85,7 +90,7 @@ final class StatusService {
 				'clients'   => Sanitizer::positive_int( $channel['totalClients'] ?? 0, 0 ),
 			);
 		}
-		set_transient( self::CHANNELS_TRANSIENT, $projected, $ttl );
+		set_transient( $cache_key, $projected, $ttl );
 		return $projected;
 	}
 
@@ -96,5 +101,9 @@ final class StatusService {
 	public function theme_name(): string {
 		$theme = (string) $this->repository->get( 'theme' );
 		return in_array( $theme, array( 'auto', 'light', 'dark' ), true ) ? $theme : 'auto';
+	}
+
+	public function is_valid_node( string $node_id ): bool {
+		return ( new NodeRegistry( $this->repository ) )->is_valid_id( $node_id );
 	}
 }

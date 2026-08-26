@@ -16,6 +16,8 @@ use Ts3Ops\Audit\AuditLog;
 use Ts3Ops\Capabilities;
 use Ts3Ops\Identity\Challenge;
 use Ts3Ops\Identity\Mapping;
+use Ts3Ops\Security\Sanitizer;
+use Ts3Ops\Settings\NodeRegistry;
 use Ts3Ops\Settings\Repository;
 
 final class Actions {
@@ -31,6 +33,88 @@ final class Actions {
 		add_action( 'admin_post_ts3cops_channel_move', array( self::class, 'channel_move' ) );
 		add_action( 'admin_post_ts3cops_identity_challenge', array( self::class, 'identity_challenge' ) );
 		add_action( 'admin_post_ts3cops_identity_status', array( self::class, 'identity_status' ) );
+		add_action( 'admin_post_ts3cops_switch_node', array( self::class, 'switch_node' ) );
+		add_action( 'admin_post_ts3cops_node_add', array( self::class, 'node_add' ) );
+		add_action( 'admin_post_ts3cops_node_update', array( self::class, 'node_update' ) );
+		add_action( 'admin_post_ts3cops_node_delete', array( self::class, 'node_delete' ) );
+	}
+
+	public static function switch_node(): void {
+		self::require_capability( Capabilities::MANAGE_VIEW );
+		check_admin_referer( 'ts3cops_switch_node', 'ts3cops_nonce' );
+		$node_id  = sanitize_key( (string) ( $_POST['node_id'] ?? '' ) );
+		$page     = sanitize_key( (string) ( $_POST['page'] ?? 'ts3-operations' ) );
+		$registry = new NodeRegistry( new Repository() );
+		if ( '' !== $node_id && ! $registry->is_valid_id( $node_id ) ) {
+			wp_die( 'Unknown node.' );
+		}
+		$registry->set_active( $node_id );
+		wp_safe_redirect( admin_url( 'admin.php?page=' . $page ) );
+		exit;
+	}
+
+	public static function node_add(): void {
+		self::require_capability( 'manage_options' );
+		check_admin_referer( 'ts3cops_node_add', 'ts3cops_nonce' );
+		$endpoint = Sanitizer::endpoint_url( (string) ( $_POST['endpoint'] ?? '' ) );
+		if ( '' === $endpoint ) {
+			wp_die( 'Invalid endpoint.' );
+		}
+		$registry = new NodeRegistry( new Repository() );
+		$node_id  = NodeRegistry::generate_node_id();
+		$registry->upsert(
+			array(
+				'node_id'      => $node_id,
+				'display_name' => sanitize_text_field( wp_unslash( (string) ( $_POST['display_name'] ?? '' ) ) ),
+				'endpoint'     => $endpoint,
+				'credential'   => '',
+				'timeout'      => Sanitizer::positive_int( $_POST['timeout'] ?? 8, 8 ),
+				'is_active'    => true,
+			)
+		);
+		wp_safe_redirect( admin_url( 'admin.php?page=ts3-operations-settings&ts3cops_result=node_added' ) );
+		exit;
+	}
+
+	public static function node_update(): void {
+		self::require_capability( 'manage_options' );
+		$node_id = sanitize_key( (string) ( $_POST['node_id'] ?? '' ) );
+		check_admin_referer( 'ts3cops_node_update_' . $node_id, 'ts3cops_nonce' );
+		$registry = new NodeRegistry( new Repository() );
+		$existing = $registry->get( $node_id );
+		if ( null === $existing ) {
+			wp_die( 'Unknown node.' );
+		}
+		$endpoint = Sanitizer::endpoint_url( (string) ( $_POST['endpoint'] ?? '' ) );
+		if ( '' === $endpoint ) {
+			wp_die( 'Invalid endpoint.' );
+		}
+		$credential = sanitize_text_field( wp_unslash( (string) ( $_POST['credential'] ?? '' ) ) );
+		if ( '' === $credential ) {
+			$credential = (string) ( $existing['credential'] ?? '' );
+		}
+		$registry->upsert(
+			array(
+				'node_id'      => $node_id,
+				'display_name' => sanitize_text_field( wp_unslash( (string) ( $_POST['display_name'] ?? '' ) ) ),
+				'endpoint'     => $endpoint,
+				'credential'   => $credential,
+				'timeout'      => Sanitizer::positive_int( $_POST['timeout'] ?? 8, 8 ),
+				'is_active'    => (bool) ( $existing['is_active'] ?? false ),
+			)
+		);
+		wp_safe_redirect( admin_url( 'admin.php?page=ts3-operations-settings&ts3cops_result=node_updated' ) );
+		exit;
+	}
+
+	public static function node_delete(): void {
+		self::require_capability( 'manage_options' );
+		$node_id = sanitize_key( (string) ( $_POST['node_id'] ?? '' ) );
+		check_admin_referer( 'ts3cops_node_delete_' . $node_id, 'ts3cops_nonce' );
+		$registry = new NodeRegistry( new Repository() );
+		$registry->remove( $node_id );
+		wp_safe_redirect( admin_url( 'admin.php?page=ts3-operations-settings&ts3cops_result=node_deleted' ) );
+		exit;
 	}
 
 	public static function pair(): void {

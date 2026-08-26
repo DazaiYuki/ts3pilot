@@ -19,6 +19,8 @@
     "test": "npm run test --workspace @ts3cops/ts3-manager && npm run test --workspace @ts3cops/ts3-operations-wp",
     "build": "npm run build --workspace @ts3cops/ts3-manager",
     "verify": "node scripts/verify.mjs",
+    "release": "node scripts/release.mjs",
+    "build-release": "node scripts/release.mjs",
     "cli": "node apps/ts3-manager/src/cli/index.ts",
     "package": "node scripts/package.mjs"
   }

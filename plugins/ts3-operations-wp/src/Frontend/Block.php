@@ -25,6 +25,7 @@ final class Block {
 						'render_callback' => static function ( array $attributes ) use ( $status ): string {
 							return Shortcode::render(
 								array(
+									'node'          => (string) ( $attributes['node'] ?? '' ),
 									'show_name'     => $attributes['showName'] ? 'true' : 'false',
 									'show_online'   => $attributes['showOnline'] ? 'true' : 'false',
 									'show_max'      => $attributes['showMax'] ? 'true' : 'false',

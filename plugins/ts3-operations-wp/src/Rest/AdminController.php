@@ -18,6 +18,7 @@ use Ts3Ops\Identity\Callback;
 use Ts3Ops\Identity\Challenge;
 use Ts3Ops\Security\Sanitizer;
 use Ts3Ops\Services\StatusService;
+use Ts3Ops\Settings\NodeRegistry;
 use Ts3Ops\Settings\Repository;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -29,6 +30,19 @@ final class AdminController {
 		private readonly StatusService $status,
 		private readonly Repository $repository,
 	) {}
+
+	private function client_for_request( WP_REST_Request $request ): ?Client {
+		$node_id = $request->get_param( 'node_id' );
+		if ( null === $node_id ) {
+			return $this->client;
+		}
+		$node_id  = sanitize_text_field( (string) $node_id );
+		$registry = new NodeRegistry( $this->repository );
+		if ( ! $registry->is_valid_id( $node_id ) ) {
+			return null;
+		}
+		return $this->client->for_node( $node_id );
+	}
 
 	public function register_routes(): void {
 		register_rest_route(
@@ -47,6 +61,7 @@ final class AdminController {
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'dashboard' ),
 				'permission_callback' => array( $this, 'can_view' ),
+				'args'                => array( 'node_id' => array( 'required' => false ) ),
 			)
 		);
 		register_rest_route(
@@ -56,6 +71,7 @@ final class AdminController {
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'clients' ),
 				'permission_callback' => array( $this, 'can_clients' ),
+				'args'                => array( 'node_id' => array( 'required' => false ) ),
 			)
 		);
 		register_rest_route(
@@ -72,6 +88,7 @@ final class AdminController {
 						'required' => false,
 						'default'  => 'channel',
 					),
+					'node_id'   => array( 'required' => false ),
 				),
 			)
 		);
@@ -85,6 +102,7 @@ final class AdminController {
 				'args'                => array(
 					'client_id' => array( 'required' => true ),
 					'message'   => array( 'required' => true ),
+					'node_id'   => array( 'required' => false ),
 				),
 			)
 		);
@@ -98,6 +116,7 @@ final class AdminController {
 				'args'                => array(
 					'client_id'  => array( 'required' => true ),
 					'channel_id' => array( 'required' => true ),
+					'node_id'    => array( 'required' => false ),
 				),
 			)
 		);
@@ -108,6 +127,7 @@ final class AdminController {
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'channels' ),
 				'permission_callback' => array( $this, 'can_channels' ),
+				'args'                => array( 'node_id' => array( 'required' => false ) ),
 			)
 		);
 		register_rest_route(
@@ -117,6 +137,7 @@ final class AdminController {
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'channel_create' ),
 				'permission_callback' => array( $this, 'can_channels' ),
+				'args'                => array( 'node_id' => array( 'required' => false ) ),
 			)
 		);
 		register_rest_route(
@@ -126,6 +147,7 @@ final class AdminController {
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'channel_edit' ),
 				'permission_callback' => array( $this, 'can_channels' ),
+				'args'                => array( 'node_id' => array( 'required' => false ) ),
 			)
 		);
 		register_rest_route(
@@ -135,6 +157,7 @@ final class AdminController {
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'channel_delete' ),
 				'permission_callback' => array( $this, 'can_channels' ),
+				'args'                => array( 'node_id' => array( 'required' => false ) ),
 			)
 		);
 		register_rest_route(
@@ -144,6 +167,7 @@ final class AdminController {
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'channel_move' ),
 				'permission_callback' => array( $this, 'can_channels' ),
+				'args'                => array( 'node_id' => array( 'required' => false ) ),
 			)
 		);
 		register_rest_route(
@@ -189,6 +213,7 @@ final class AdminController {
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'identity_me_challenge' ),
 				'permission_callback' => array( $this, 'can_self_service' ),
+				'args'                => array( 'node_id' => array( 'required' => false ) ),
 			)
 		);
 		register_rest_route(
@@ -207,6 +232,7 @@ final class AdminController {
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'restart_server' ),
 				'permission_callback' => array( $this, 'can_maintenance' ),
+				'args'                => array( 'node_id' => array( 'required' => false ) ),
 			)
 		);
 	}
@@ -225,11 +251,16 @@ final class AdminController {
 		);
 	}
 
-	public function dashboard(): WP_REST_Response {
-		$snapshot = $this->status->get_snapshot( true );
+	public function dashboard( WP_REST_Request $request ): WP_REST_Response {
+		$client = $this->client_for_request( $request );
+		if ( null === $client ) {
+			return new WP_REST_Response( array( 'error' => 'Unknown node.' ), 400 );
+		}
+		$node_id  = $request->get_param( 'node_id' );
+		$snapshot = $this->status->get_snapshot( true, is_string( $node_id ) ? $node_id : null );
 		$info     = array();
 		try {
-			$info = $this->client->request( 'GET', '/v1/info' );
+			$info = $client->request( 'GET', '/v1/info' );
 		} catch ( AgentException $error ) {
 			$info = array( 'error' => $error->getMessage() );
 		}
@@ -237,15 +268,19 @@ final class AdminController {
 			array(
 				'status'    => $snapshot,
 				'agent'     => $info,
-				'node_id'   => (string) $this->repository->get( 'agent_node_id' ),
+				'node_id'   => is_string( $node_id ) ? $node_id : ( new NodeRegistry( $this->repository ) )->active_id(),
 				'last_sync' => (int) ( $snapshot['updated'] ?? 0 ),
 			)
 		);
 	}
 
-	public function clients(): WP_REST_Response {
+	public function clients( WP_REST_Request $request ): WP_REST_Response {
+		$client = $this->client_for_request( $request );
+		if ( null === $client ) {
+			return new WP_REST_Response( array( 'error' => 'Unknown node.' ), 400 );
+		}
 		try {
-			$clients = $this->client->request( 'GET', '/v1/ts3/clients' );
+			$clients = $client->request( 'GET', '/v1/ts3/clients' );
 			foreach ( $clients as &$client ) {
 				$client = array(
 					'clientId'  => (int) ( $client['clientId'] ?? 0 ),
@@ -262,6 +297,10 @@ final class AdminController {
 	}
 
 	public function kick_client( WP_REST_Request $request ): WP_REST_Response {
+		$client = $this->client_for_request( $request );
+		if ( null === $client ) {
+			return new WP_REST_Response( array( 'error' => 'Unknown node.' ), 400 );
+		}
 		$client_id = (int) $request->get_param( 'client_id' );
 		$kick_from = $request->get_param( 'kick_from' );
 		if ( $client_id <= 0 || ! in_array( $kick_from, array( 'channel', 'server' ), true ) ) {
@@ -269,7 +308,7 @@ final class AdminController {
 		}
 		$reason = sanitize_text_field( (string) $request->get_param( 'reason' ) );
 		try {
-			$this->client->request(
+			$client->request(
 				'POST',
 				'/v1/ts3/clients/kick',
 				array(
@@ -287,13 +326,17 @@ final class AdminController {
 	}
 
 	public function poke_client( WP_REST_Request $request ): WP_REST_Response {
+		$client = $this->client_for_request( $request );
+		if ( null === $client ) {
+			return new WP_REST_Response( array( 'error' => 'Unknown node.' ), 400 );
+		}
 		$client_id = (int) $request->get_param( 'client_id' );
 		$message   = sanitize_text_field( (string) $request->get_param( 'message' ) );
 		if ( $client_id <= 0 || '' === $message || strlen( $message ) > 512 ) {
 			return new WP_REST_Response( array( 'error' => 'Invalid parameters.' ), 400 );
 		}
 		try {
-			$this->client->poke_client( $client_id, $message );
+			$client->poke_client( $client_id, $message );
 		} catch ( AgentException $error ) {
 			AuditLog::append( 'poke', 'client:' . $client_id, 'failed', $error->error_code );
 			return new WP_REST_Response( array( 'error' => $error->getMessage() ), 502 );
@@ -303,13 +346,17 @@ final class AdminController {
 	}
 
 	public function move_client( WP_REST_Request $request ): WP_REST_Response {
+		$client = $this->client_for_request( $request );
+		if ( null === $client ) {
+			return new WP_REST_Response( array( 'error' => 'Unknown node.' ), 400 );
+		}
 		$client_id  = (int) $request->get_param( 'client_id' );
 		$channel_id = (int) $request->get_param( 'channel_id' );
 		if ( $client_id <= 0 || $channel_id < 0 ) {
 			return new WP_REST_Response( array( 'error' => 'Invalid parameters.' ), 400 );
 		}
 		try {
-			$this->client->move_client( $client_id, $channel_id );
+			$client->move_client( $client_id, $channel_id );
 		} catch ( AgentException $error ) {
 			AuditLog::append( 'move', 'client:' . $client_id, 'failed', $error->error_code );
 			return new WP_REST_Response( array( 'error' => $error->getMessage() ), 502 );
@@ -318,17 +365,25 @@ final class AdminController {
 		return new WP_REST_Response( array( 'ok' => true ) );
 	}
 
-	public function channels(): WP_REST_Response {
+	public function channels( WP_REST_Request $request ): WP_REST_Response {
+		$client = $this->client_for_request( $request );
+		if ( null === $client ) {
+			return new WP_REST_Response( array( 'error' => 'Unknown node.' ), 400 );
+		}
 		try {
-			return new WP_REST_Response( array( 'channels' => $this->client->request( 'GET', '/v1/ts3/channels' ) ) );
+			return new WP_REST_Response( array( 'channels' => $client->request( 'GET', '/v1/ts3/channels' ) ) );
 		} catch ( AgentException $error ) {
 			return new WP_REST_Response( array( 'error' => $error->getMessage() ), 502 );
 		}
 	}
 
-	public function restart_server(): WP_REST_Response {
+	public function restart_server( WP_REST_Request $request ): WP_REST_Response {
+		$client = $this->client_for_request( $request );
+		if ( null === $client ) {
+			return new WP_REST_Response( array( 'error' => 'Unknown node.' ), 400 );
+		}
 		try {
-			$this->client->request( 'POST', '/v1/system/restart', array( 'action' => 'restart' ) );
+			$client->request( 'POST', '/v1/system/restart', array( 'action' => 'restart' ) );
 		} catch ( AgentException $error ) {
 			AuditLog::append( 'server.restart', 'node', 'failed', $error->error_code );
 			return new WP_REST_Response( array( 'error' => $error->getMessage() ), 502 );
@@ -338,12 +393,16 @@ final class AdminController {
 	}
 
 	public function channel_create( WP_REST_Request $request ): WP_REST_Response {
+		$client = $this->client_for_request( $request );
+		if ( null === $client ) {
+			return new WP_REST_Response( array( 'error' => 'Unknown node.' ), 400 );
+		}
 		$name = sanitize_text_field( (string) $request->get_param( 'name' ) );
 		if ( '' === $name || strlen( $name ) > 100 ) {
 			return new WP_REST_Response( array( 'error' => 'Invalid channel name.' ), 400 );
 		}
 		try {
-			$result = $this->client->channel_create(
+			$result = $client->channel_create(
 				array(
 					'name'     => $name,
 					'parentId' => Sanitizer::positive_int( $request->get_param( 'parent_id' ), 0 ),
@@ -364,6 +423,10 @@ final class AdminController {
 	}
 
 	public function channel_edit( WP_REST_Request $request ): WP_REST_Response {
+		$client = $this->client_for_request( $request );
+		if ( null === $client ) {
+			return new WP_REST_Response( array( 'error' => 'Unknown node.' ), 400 );
+		}
 		$channel_id = (int) $request->get_param( 'channel_id' );
 		if ( $channel_id <= 0 ) {
 			return new WP_REST_Response( array( 'error' => 'Invalid channel id.' ), 400 );
@@ -378,7 +441,7 @@ final class AdminController {
 			$input['topic'] = $topic;
 		}
 		try {
-			$this->client->channel_edit( $input );
+			$client->channel_edit( $input );
 		} catch ( AgentException $error ) {
 			AuditLog::append( 'channel.edit', 'channel:' . $channel_id, 'failed', $error->error_code );
 			return new WP_REST_Response( array( 'error' => $error->getMessage() ), 502 );
@@ -388,12 +451,16 @@ final class AdminController {
 	}
 
 	public function channel_delete( WP_REST_Request $request ): WP_REST_Response {
+		$client = $this->client_for_request( $request );
+		if ( null === $client ) {
+			return new WP_REST_Response( array( 'error' => 'Unknown node.' ), 400 );
+		}
 		$channel_id = (int) $request->get_param( 'channel_id' );
 		if ( $channel_id <= 0 ) {
 			return new WP_REST_Response( array( 'error' => 'Invalid channel id.' ), 400 );
 		}
 		try {
-			$this->client->channel_delete(
+			$client->channel_delete(
 				array(
 					'channelId' => $channel_id,
 					'force'     => Sanitizer::boolish( $request->get_param( 'force' ) ),
@@ -408,12 +475,16 @@ final class AdminController {
 	}
 
 	public function channel_move( WP_REST_Request $request ): WP_REST_Response {
+		$client = $this->client_for_request( $request );
+		if ( null === $client ) {
+			return new WP_REST_Response( array( 'error' => 'Unknown node.' ), 400 );
+		}
 		$channel_id = (int) $request->get_param( 'channel_id' );
 		if ( $channel_id <= 0 ) {
 			return new WP_REST_Response( array( 'error' => 'Invalid channel id.' ), 400 );
 		}
 		try {
-			$this->client->channel_move(
+			$client->channel_move(
 				array(
 					'channelId' => $channel_id,
 					'parentId'  => Sanitizer::positive_int( $request->get_param( 'parent_id' ), 0 ),
@@ -494,7 +565,11 @@ final class AdminController {
 		return new WP_REST_Response( array( 'mapping' => Mapping::get( $user_id ) ) );
 	}
 
-	public function identity_me_challenge(): WP_REST_Response {
+	public function identity_me_challenge( WP_REST_Request $request ): WP_REST_Response {
+		$client = $this->client_for_request( $request );
+		if ( null === $client ) {
+			return new WP_REST_Response( array( 'error' => 'Unknown node.' ), 400 );
+		}
 		$user_id = get_current_user_id();
 		if ( $user_id <= 0 ) {
 			return new WP_REST_Response( array( 'error' => 'Not logged in.' ), 401 );
@@ -513,7 +588,7 @@ final class AdminController {
 			)
 		);
 		try {
-			$this->client->register_identity_challenge(
+			$client->register_identity_challenge(
 				array(
 					'wpUserId'      => $user_id,
 					'code'          => $code,

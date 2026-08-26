@@ -36,6 +36,7 @@ CLI/Agent 独立可用，WordPress 插件是可选的 Web 控制平面，两者�
 ```powershell
 npm install
 npm run verify
+npm run release   # 生成 dist/release/ 下的 CLI tar.gz 与 WP 插件 zip
 
 # 端到端冒烟（全部在 mock 模式下）
 npm run cli -- config init --config .\tmp\dev\config.json

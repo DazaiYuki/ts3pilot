@@ -12,6 +12,7 @@ namespace Ts3Ops\Admin;
 use Ts3Ops\Agent\Client;
 use Ts3Ops\Capabilities;
 use Ts3Ops\Services\StatusService;
+use Ts3Ops\Settings\NodeRegistry;
 use Ts3Ops\Settings\Repository;
 
 final class Menu {
@@ -19,12 +20,14 @@ final class Menu {
 		add_action(
 			'admin_menu',
 			static function () use ( $client, $status, $repository ): void {
+				$registry = new NodeRegistry( $repository );
 				add_menu_page(
 					'TS3 Operations',
 					'TS3 Operations',
 					Capabilities::MANAGE_VIEW,
 					'ts3-operations',
 					static function () use ( $status, $repository ): void {
+						NodeSwitcher::render( new NodeRegistry( $repository ), 'ts3-operations' );
 						( new DashboardPage( $status, $repository ) )->render();
 					},
 					'dashicons-format-status',
@@ -36,7 +39,8 @@ final class Menu {
 					'Clients',
 					Capabilities::MANAGE_CLIENTS,
 					'ts3-operations-clients',
-					static function () use ( $client ): void {
+					static function () use ( $client, $registry ): void {
+						NodeSwitcher::render( $registry, 'ts3-operations-clients' );
 						( new ClientsPage( $client ) )->render();
 					}
 				);
@@ -46,7 +50,8 @@ final class Menu {
 					'Channels',
 					Capabilities::MANAGE_CHANNELS,
 					'ts3-operations-channels',
-					static function () use ( $client ): void {
+					static function () use ( $client, $registry ): void {
+						NodeSwitcher::render( $registry, 'ts3-operations-channels' );
 						( new ChannelsPage( $client ) )->render();
 					}
 				);
@@ -56,7 +61,8 @@ final class Menu {
 					'Maintenance',
 					Capabilities::MANAGE_MAINTENANCE,
 					'ts3-operations-maintenance',
-					static function () use ( $client ): void {
+					static function () use ( $client, $registry ): void {
+						NodeSwitcher::render( $registry, 'ts3-operations-maintenance' );
 						( new MaintenancePage( $client ) )->render();
 					}
 				);
@@ -66,7 +72,8 @@ final class Menu {
 					'Users / Identity',
 					Capabilities::MANAGE_USERS,
 					'ts3-operations-users',
-					static function (): void {
+					static function () use ( $registry ): void {
+						NodeSwitcher::render( $registry, 'ts3-operations-users' );
 						( new UsersPage() )->render();
 					}
 				);
@@ -76,7 +83,8 @@ final class Menu {
 					'Settings',
 					'manage_options',
 					'ts3-operations-settings',
-					static function () use ( $client, $repository ): void {
+					static function () use ( $client, $repository, $registry ): void {
+						NodeSwitcher::render( $registry, 'ts3-operations-settings' );
 						( new SettingsPage( $client, $repository ) )->render();
 					}
 				);
@@ -86,7 +94,8 @@ final class Menu {
 					'Diagnostics',
 					'manage_options',
 					'ts3-operations-diagnostics',
-					static function () use ( $repository ): void {
+					static function () use ( $repository, $registry ): void {
+						NodeSwitcher::render( $registry, 'ts3-operations-diagnostics' );
 						( new DiagnosticsPage( $repository ) )->render();
 					}
 				);

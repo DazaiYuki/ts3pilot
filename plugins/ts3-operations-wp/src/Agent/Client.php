@@ -3,7 +3,8 @@
  * WordPress HTTP client for the ts3-manager agent.
  *
  * All requests go through the WordPress HTTP API with explicit timeouts and
- * TLS verification. The long-term credential never leaves server-side PHP.
+ * TLS verification. Requests are always signed with the selected node's own
+ * credential; node credentials are never mixed.
  *
  * @package Ts3Ops
  */
@@ -12,24 +13,50 @@ declare(strict_types=1);
 
 namespace Ts3Ops\Agent;
 
+use Ts3Ops\Settings\NodeRegistry;
 use Ts3Ops\Settings\Repository;
 
 final class Client {
-	private const TIMEOUT = 8;
+	public function __construct(
+		private readonly Repository $repository,
+		private readonly ?string $node_id = null,
+	) {}
 
-	public function __construct( private readonly Repository $repository ) {}
+	public function for_node( ?string $node_id ): self {
+		return new self( $this->repository, $node_id );
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function node(): array {
+		$registry = new NodeRegistry( $this->repository );
+		if ( null !== $this->node_id ) {
+			$node = $registry->get( $this->node_id );
+			if ( null === $node ) {
+				throw new AgentException( 'NODE_NOT_FOUND', 'Unknown node: ' . esc_html( $this->node_id ) );
+			}
+			return $node;
+		}
+		$node = $registry->active();
+		if ( '' === (string) ( $node['endpoint'] ?? '' ) ) {
+			throw new AgentException( 'AGENT_NOT_CONFIGURED', 'No active agent node is configured.' );
+		}
+		return $node;
+	}
 
 	/**
 	 * @param array<string, mixed> $body
 	 * @return array<string, mixed>
 	 */
 	public function request( string $method, string $path, array $body = array() ): array {
-		$endpoint   = rtrim( (string) $this->repository->get( 'agent_url' ), '/' );
-		$credential = (string) $this->repository->get( 'agent_credential' );
+		$node       = $this->node();
+		$endpoint   = rtrim( (string) ( $node['endpoint'] ?? '' ), '/' );
+		$credential = (string) ( $node['credential'] ?? '' );
 		if ( '' === $endpoint || '' === $credential ) {
-			throw new AgentException( 'AGENT_NOT_CONFIGURED', 'Agent endpoint or credential is not configured.' );
+			throw new AgentException( 'AGENT_NOT_CONFIGURED', 'Agent endpoint or credential is not configured for the selected node.' );
 		}
-		return $this->do_request( $method, $path, $body, $credential );
+		return $this->do_request( $method, $path, $body, $credential, (int) ( $node['timeout'] ?? 8 ) );
 	}
 
 	/**
@@ -38,11 +65,11 @@ final class Client {
 	 * @return array<string, mixed>
 	 */
 	public function pair( string $pairing_code ): array {
-		$endpoint = rtrim( (string) $this->repository->get( 'agent_url' ), '/' );
+		$endpoint = rtrim( (string) ( $this->node()['endpoint'] ?? '' ), '/' );
 		if ( '' === $endpoint ) {
 			throw new AgentException( 'AGENT_NOT_CONFIGURED', 'Agent endpoint is not configured.' );
 		}
-		return $this->do_request( 'POST', '/v1/agent/pair', array( 'pairingCode' => $pairing_code ), $pairing_code );
+		return $this->do_request( 'POST', '/v1/agent/pair', array( 'pairingCode' => $pairing_code ), $pairing_code, (int) ( $this->node()['timeout'] ?? 8 ) );
 	}
 
 	/**
@@ -155,8 +182,8 @@ final class Client {
 	 * @param array<string, mixed> $body
 	 * @return array<string, mixed>
 	 */
-	private function do_request( string $method, string $path, array $body, string $secret ): array {
-		$endpoint = rtrim( (string) $this->repository->get( 'agent_url' ), '/' );
+	private function do_request( string $method, string $path, array $body, string $secret, int $timeout ): array {
+		$endpoint = rtrim( (string) ( $this->node()['endpoint'] ?? '' ), '/' );
 		$json     = wp_json_encode( $body );
 		if ( false === $json ) {
 			throw new AgentException( 'INVALID_BODY', 'Request body could not be encoded.' );
@@ -168,7 +195,7 @@ final class Client {
 			$endpoint . $path,
 			array(
 				'method'      => $method,
-				'timeout'     => self::TIMEOUT,
+				'timeout'     => $timeout,
 				'redirection' => 0,
 				'sslverify'   => true,
 				'headers'     => $headers,

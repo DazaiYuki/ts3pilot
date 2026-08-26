@@ -13,6 +13,7 @@ use PHPUnit\Framework\TestCase;
 use Ts3Ops\Agent\Client;
 use Ts3Ops\Frontend\Shortcode;
 use Ts3Ops\Services\StatusService;
+use Ts3Ops\Settings\NodeRegistry;
 use Ts3Ops\Settings\Repository;
 
 final class ShortcodeTest extends TestCase {
@@ -20,6 +21,7 @@ final class ShortcodeTest extends TestCase {
 		$GLOBALS['__ts3cops_options']      = array();
 		$GLOBALS['__ts3cops_transients']   = array();
 		$GLOBALS['__ts3cops_http_queue']   = array();
+		$GLOBALS['__ts3cops_http_calls']   = array();
 		$GLOBALS['__ts3cops_usermeta']     = array();
 		$GLOBALS['__ts3cops_current_user'] = 0;
 	}
@@ -155,5 +157,68 @@ final class ShortcodeTest extends TestCase {
 		$public                            = Shortcode::render( array( 'join_policy' => 'public' ) );
 		$this->assertStringContainsString( 'ts3-status-join', $public );
 		$this->assertStringContainsString( 'ts3server://127.0.0.1', $public );
+	}
+
+	public function test_node_attribute_routes_to_the_selected_node(): void {
+		$repository = new Repository();
+		$repository->set_many(
+			array(
+				'agent_url'        => 'http://127.0.0.1:17880',
+				'agent_credential' => 'secret-a',
+			)
+		);
+		$registry = new NodeRegistry( $repository );
+		$registry->upsert(
+			array(
+				'node_id'      => 'node-b',
+				'display_name' => 'Singapore',
+				'endpoint'     => 'http://127.0.0.1:17881',
+				'credential'   => 'secret-b',
+				'timeout'      => 8,
+				'is_active'    => false,
+			)
+		);
+		$status = new StatusService( new Client( $repository ), $repository );
+		Shortcode::init( $status );
+
+		$GLOBALS['__ts3cops_http_queue'][] = array(
+			'response' => array( 'code' => 200 ),
+			'body'     => wp_json_encode(
+				array(
+					'ok'   => true,
+					'data' => array(
+						'online'        => true,
+						'name'          => 'SG Server',
+						'clientsOnline' => 1,
+						'maxClients'    => 32,
+						'version'       => '3.13.7',
+					),
+				)
+			),
+		);
+		$html                              = Shortcode::render( array( 'node' => 'node-b' ) );
+		$this->assertStringContainsString( 'SG Server', $html );
+		$call = $GLOBALS['__ts3cops_http_calls'][0] ?? array();
+		$this->assertSame( 'http://127.0.0.1:17881/v1/ts3/status', (string) ( $call['url'] ?? '' ) );
+
+		// Invalid node falls back to the active node without error.
+		$GLOBALS['__ts3cops_transients']   = array();
+		$GLOBALS['__ts3cops_http_queue'][] = array(
+			'response' => array( 'code' => 200 ),
+			'body'     => wp_json_encode(
+				array(
+					'ok'   => true,
+					'data' => array(
+						'online'        => true,
+						'name'          => 'Legacy Server',
+						'clientsOnline' => 2,
+						'maxClients'    => 32,
+						'version'       => '3.13.7',
+					),
+				)
+			),
+		);
+		$html2                             = Shortcode::render( array( 'node' => 'does-not-exist' ) );
+		$this->assertStringContainsString( 'Legacy Server', $html2 );
 	}
 }

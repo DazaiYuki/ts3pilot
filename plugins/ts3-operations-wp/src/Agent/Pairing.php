@@ -2,6 +2,9 @@
 /**
  * Pairing flow helper.
  *
+ * Pairing always targets the freshly registered node; on success the long-term
+ * credential is stored on that node only.
+ *
  * @package Ts3Ops
  */
 
@@ -10,6 +13,7 @@ declare(strict_types=1);
 namespace Ts3Ops\Agent;
 
 use Ts3Ops\Security\Sanitizer;
+use Ts3Ops\Settings\NodeRegistry;
 use Ts3Ops\Settings\Repository;
 
 final class Pairing {
@@ -35,19 +39,51 @@ final class Pairing {
 				'message' => 'Invalid pairing code format.',
 			);
 		}
-		$this->repository->set( 'agent_url', $agent_url );
+
+		$registry = new NodeRegistry( $this->repository );
+		$node_id  = NodeRegistry::generate_node_id();
+		$registry->upsert(
+			array(
+				'node_id'      => $node_id,
+				'display_name' => 'Node ' . substr( $node_id, 0, 8 ),
+				'endpoint'     => $agent_url,
+				'credential'   => '',
+				'timeout'      => 8,
+				'is_active'    => true,
+			)
+		);
+		$registry->set_active( $node_id );
+
 		try {
-			$data = $this->client->pair( $pairing_code );
+			$data       = $this->client->for_node( $node_id )->pair( $pairing_code );
+			$agent_id   = sanitize_text_field( (string) ( $data['nodeId'] ?? $node_id ) );
+			$credential = sanitize_text_field( (string) ( $data['credential'] ?? '' ) );
+			if ( $agent_id !== $node_id ) {
+				$registry->remove( $node_id );
+				$node_id = $agent_id;
+			}
+			$registry->upsert(
+				array(
+					'node_id'      => $node_id,
+					'display_name' => 'Node ' . substr( $node_id, 0, 8 ),
+					'endpoint'     => $agent_url,
+					'credential'   => $credential,
+					'timeout'      => 8,
+					'is_active'    => true,
+				)
+			);
+			$registry->set_active( $node_id );
 			$this->repository->set_many(
 				array(
-					'agent_credential' => sanitize_text_field( (string) ( $data['credential'] ?? '' ) ),
-					'agent_node_id'    => sanitize_text_field( (string) ( $data['nodeId'] ?? '' ) ),
+					'agent_url'        => $agent_url,
+					'agent_credential' => $credential,
+					'agent_node_id'    => $node_id,
 				)
 			);
 			return array(
 				'ok'         => true,
-				'credential' => (string) ( $data['credential'] ?? '' ),
-				'node_id'    => (string) ( $data['nodeId'] ?? '' ),
+				'credential' => $credential,
+				'node_id'    => $node_id,
 			);
 		} catch ( AgentException $error ) {
 			return array(

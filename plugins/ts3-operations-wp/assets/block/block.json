@@ -9,6 +9,7 @@
   "keywords": [ "teamspeak", "ts3", "status" ],
   "textdomain": "ts3-operations",
   "attributes": {
+    "node": { "type": "string", "default": "" },
     "showName": { "type": "boolean", "default": true },
     "showOnline": { "type": "boolean", "default": true },
     "showMax": { "type": "boolean", "default": true },

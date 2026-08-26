@@ -25,6 +25,7 @@ final class AdminControllerTest extends TestCase {
 		$GLOBALS['__ts3cops_usermeta']         = array();
 		$GLOBALS['__ts3cops_transients']       = array();
 		$GLOBALS['__ts3cops_http_queue']       = array();
+		$GLOBALS['__ts3cops_http_calls']       = array();
 		$GLOBALS['__ts3cops_users']            = array();
 		$GLOBALS['__ts3cops_userdata']         = array();
 		$GLOBALS['__ts3cops_current_user_can'] = true;
@@ -221,7 +222,7 @@ final class AdminControllerTest extends TestCase {
 	public function test_identity_me_challenge_creates_pending_mapping_and_registers(): void {
 		$GLOBALS['__ts3cops_current_user'] = 5;
 		$this->queue_success( array( 'ok' => true ) );
-		$response = $this->controller()->identity_me_challenge();
+		$response = $this->controller()->identity_me_challenge( new WP_REST_Request( array() ) );
 		$this->assertSame( 200, $response->get_status() );
 		$this->assertMatchesRegularExpression( '/^[A-F0-9]{8}$/', (string) $response->get_data()['code'] );
 		$this->assertSame( 'pending', Mapping::get( 5 )['status'] );

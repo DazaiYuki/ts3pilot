@@ -167,7 +167,7 @@ function pipeFile(path: string, out: NodeJS.WritableStream): Promise<void> {
   });
 }
 
-async function writeTarGz(entries: Array<{ name: string; path: string; type: 'file' | 'dir'; size: number }>, archivePath: string): Promise<void> {
+export async function writeTarGzArchive(entries: Array<{ name: string; path: string; type: 'file' | 'dir'; size: number }>, archivePath: string): Promise<void> {
   const temporaryTar = `${archivePath}.${process.pid}.tar`;
   const temporaryGz = `${archivePath}.${process.pid}.gz`;
   try {
@@ -374,7 +374,7 @@ export async function createBackupArchive(options: CreateBackupOptions): Promise
   ];
   mkdirSync(dirname(options.archivePath), { recursive: true });
   try {
-    await writeTarGz(entries, options.archivePath);
+    await writeTarGzArchive(entries, options.archivePath);
   } finally {
     try {
       unlinkSync(manifestTemp);

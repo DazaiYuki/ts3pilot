@@ -165,6 +165,7 @@ function wp_remote_retrieve_body( array $response ): string {
  * @return array<string, mixed>|WP_Error
  */
 function wp_remote_request( string $url, array $args = array() ) {
+	$GLOBALS['__ts3cops_http_calls'][] = array( 'url' => $url, 'args' => $args );
 	$queued = array_shift( $GLOBALS['__ts3cops_http_queue'] );
 	if ( null === $queued ) {
 		return new WP_Error( 'http_request_failed', 'No queued HTTP response in test.' );
@@ -408,4 +409,8 @@ function rest_url( string $path = '' ): string {
  */
 function get_userdata( int $user_id ) {
 	return $GLOBALS['__ts3cops_userdata'][ $user_id ] ?? false;
+}
+
+function wp_generate_uuid4(): string {
+	return bin2hex( random_bytes( 16 ) );
 }

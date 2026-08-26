@@ -11,7 +11,7 @@
 | ESLint（ts3-manager src/test） | 通过，0 warning |
 | `tsc -p tsconfig.json`（strict，含测试） | 通过 |
 | `node --test`（ts3-manager） | 77/77 通过 |
-| PHPUnit（WP 插件） | 39 测试 / 100 断言通过 |
+| PHPUnit（WP 插件） | 44 测试 / 117 断言通过 |
 | PHP lint（全部 PHP 文件） | 33/33 通过 |
 | PHPCS（WordPress-Extra，含豁免项） | 通过 |
 | `tsc -p tsconfig.build.json`（dist 产物） | 通过，`dist/cli/index.js` 可运行 |
@@ -58,6 +58,16 @@
 - systemd 修复（本轮）：`ts3-agent.service` 不再启用
   `MemoryDenyWriteExecute`（Node/V8 JIT 需要可执行内存，否则会崩）；
   该指令仅保留在 `ts3server.service`。
+- 多节点（本轮）：WP 侧新增 `NodeRegistry`（node_id/display_name/endpoint/
+  credential/timeout/is_active），后台 Node Switcher 一键切换节点，
+  Dashboard/Clients/Channels/Maintenance/REST 自动路由到当前节点；每个节点
+  凭据独立存储与签名，禁止跨节点复用（隔离契约测试覆盖）；`[ts3_status
+  node="..."]` 与 Block 支持指定节点（非法 node_id 回退主节点）；旧版
+  单节点设置自动迁移。
+- 发布打包（本轮）：`npm run release` 生成
+  `dist/release/ts3-manager-v0.1.0.tar.gz`（编译产物 + config.example +
+  README/LICENSE）与 `dist/release/ts3-operations-wp-v0.1.0.zip`
+  （标准 WP 插件目录结构，剔除 tests/vendor/锁文件）。
 
 ### ts3-operations-wp（WP 插件，`plugins/ts3-operations-wp`）
 
@@ -91,7 +101,7 @@
 | install/update 执行管线 | 计划模式 | 需已验证官方源（URL+sha256）后实现下载/校验/替换/回滚 |
 | 服务器配置读写 | capability 已预留 | 尚未开放端点 |
 | Bot 私聊验证通道 / away 字段 / 加入链接生成 / 角色同步 | 预留 | `identity.verify.field` 已支持 nickname；Bot 通道与角色同步后续实现 |
-| 多节点 | 单节点已实现 | 配置已按 Node 实体设计，扩展点明确 |
+| 多节点 | 已实现 | WP NodeRegistry + 切换器 + 每节点独立凭据与路由隔离 |
 | Gutenberg React 编辑器 UI | 基础动态块 | 标准 block 结构已建，完整 React UI 为后续 |
 
 ## 4. 需要真实 Linux / TS3 验证的功能

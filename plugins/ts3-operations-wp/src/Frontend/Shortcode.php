@@ -32,9 +32,10 @@ final class Shortcode {
 		if ( null === self::$status ) {
 			return '';
 		}
-		$theme         = self::$status->theme_name();
-		$attributes    = shortcode_atts(
+		$theme          = self::$status->theme_name();
+		$attributes     = shortcode_atts(
 			array(
+				'node'          => '',
 				'show_name'     => 'true',
 				'show_online'   => 'true',
 				'show_max'      => 'true',
@@ -49,18 +50,23 @@ final class Shortcode {
 			$attributes,
 			'ts3_status'
 		);
-		$show_name     = filter_var( $attributes['show_name'], FILTER_VALIDATE_BOOLEAN );
-		$show_online   = filter_var( $attributes['show_online'], FILTER_VALIDATE_BOOLEAN );
-		$show_max      = filter_var( $attributes['show_max'], FILTER_VALIDATE_BOOLEAN );
-		$show_version  = filter_var( $attributes['show_version'], FILTER_VALIDATE_BOOLEAN );
-		$show_channels = filter_var( $attributes['show_channels'], FILTER_VALIDATE_BOOLEAN );
-		$collapsible   = filter_var( $attributes['collapsible'], FILTER_VALIDATE_BOOLEAN );
-		$theme_value   = in_array( (string) $attributes['theme'], array( 'auto', 'light', 'dark' ), true ) ? (string) $attributes['theme'] : 'auto';
-		$join_policy   = Sanitizer::join_policy( (string) $attributes['join_policy'] );
-		$join_role     = Sanitizer::role_name( (string) $attributes['join_role'] );
-		$class         = sanitize_html_class( (string) $attributes['class'] );
+		$show_name      = filter_var( $attributes['show_name'], FILTER_VALIDATE_BOOLEAN );
+		$show_online    = filter_var( $attributes['show_online'], FILTER_VALIDATE_BOOLEAN );
+		$show_max       = filter_var( $attributes['show_max'], FILTER_VALIDATE_BOOLEAN );
+		$show_version   = filter_var( $attributes['show_version'], FILTER_VALIDATE_BOOLEAN );
+		$show_channels  = filter_var( $attributes['show_channels'], FILTER_VALIDATE_BOOLEAN );
+		$collapsible    = filter_var( $attributes['collapsible'], FILTER_VALIDATE_BOOLEAN );
+		$theme_value    = in_array( (string) $attributes['theme'], array( 'auto', 'light', 'dark' ), true ) ? (string) $attributes['theme'] : 'auto';
+		$join_policy    = Sanitizer::join_policy( (string) $attributes['join_policy'] );
+		$join_role      = Sanitizer::role_name( (string) $attributes['join_role'] );
+		$class          = sanitize_html_class( (string) $attributes['class'] );
+		$requested_node = (string) ( $attributes['node'] ?? '' );
+		$node_id        = '';
+		if ( '' !== $requested_node && self::$status->is_valid_node( $requested_node ) ) {
+			$node_id = $requested_node;
+		}
 
-		$snapshot = self::$status->get_snapshot();
+		$snapshot = self::$status->get_snapshot( false, '' === $node_id ? null : $node_id );
 		if ( ! empty( $snapshot['error'] ) ) {
 			return '<div class="' . esc_attr( $class ) . ' ts3-status-error" data-ts3-theme="' . esc_attr( $theme_value ) . '">'
 				. esc_html__( '暂时无法获取状态', 'ts3-operations' ) . '</div>';
@@ -80,15 +86,15 @@ final class Shortcode {
 			$html .= '<div class="ts3-status-version">' . esc_html( (string) $snapshot['version'] ) . '</div>';
 		}
 		if ( $show_channels ) {
-			$html .= self::render_channels( $collapsible );
+			$html .= self::render_channels( $collapsible, '' === $node_id ? null : $node_id );
 		}
 		$html .= self::join_button( $join_policy, $join_role );
 		$html .= '</div>';
 		return $html;
 	}
 
-	private static function render_channels( bool $collapsible ): string {
-		$channels = self::$status->get_channels_snapshot();
+	private static function render_channels( bool $collapsible, ?string $node_id ): string {
+		$channels = self::$status->get_channels_snapshot( false, $node_id );
 		if ( empty( $channels ) || isset( $channels['error'] ) ) {
 			return '';
 		}
