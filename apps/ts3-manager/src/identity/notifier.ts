@@ -53,9 +53,9 @@ export class VerificationNotifier {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-ts3cops-timestamp': timestamp,
-          'x-ts3cops-nonce': nonce,
-          'x-ts3cops-signature': signature,
+          'x-ts3pilot-timestamp': timestamp,
+          'x-ts3pilot-nonce': nonce,
+          'x-ts3pilot-signature': signature,
         },
         body,
         signal: AbortSignal.timeout(5000),

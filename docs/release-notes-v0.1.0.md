@@ -9,7 +9,7 @@
 
 - `dist/release/ts3-manager-v0.1.0.tar.gz` — CLI/Agent 独立发布包
   （编译产物 + `config.example.json` + 文档；运行时零第三方依赖）
-- `dist/release/ts3-operations-wp-v0.1.0.zip` — WordPress 插件
+- `dist/release/ts3pilot-wp-v0.1.0.zip` — WordPress 插件
   （标准插件目录结构，不含 tests/vendor/开发配置）
 
 ## 快速开始

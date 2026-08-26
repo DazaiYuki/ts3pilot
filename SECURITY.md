@@ -50,7 +50,7 @@
 
 - Agent/TS3 使用专用低权限用户；systemd unit 带
   `NoNewPrivileges`、`PrivateTmp`、`ProtectSystem=full`、`ProtectHome=true`（见
-  DEPLOYMENT.md，具体参数需按实际安装目录验证）。
+  docs/deployment.md，具体参数需按实际安装目录验证）。
 - 生产模式要求已验证的 TS3 连接（WebQuery `verified=true` 或 ServerQuery 凭据），
   否则 CLI 拒绝启动。
 

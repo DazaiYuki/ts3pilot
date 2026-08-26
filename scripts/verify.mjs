@@ -25,12 +25,12 @@ steps.push(['lint', () => run(process.platform === 'win32' ? 'npm.cmd' : 'npm', 
 steps.push(['typecheck', () => run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'typecheck'])]);
 steps.push(['test', () => run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['test'])]);
 steps.push(['build', () => run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build'])]);
-steps.push(['php lint', () => run('php', ['plugins/ts3-operations-wp/tests/lint-all.php'])]);
+steps.push(['php lint', () => run('php', ['plugins/ts3pilot-wp/tests/lint-all.php'])]);
 steps.push([
   'phpcs',
   () =>
-    run('php', ['vendor/bin/phpcs', '--standard=phpcs.xml.dist', 'src', 'tests', 'ts3-operations-wp.php', 'uninstall.php'], {
-      cwd: join(root, 'plugins', 'ts3-operations-wp'),
+    run('php', ['vendor/bin/phpcs', '--standard=phpcs.xml.dist', 'src', 'tests', 'ts3pilot-wp.php', 'uninstall.php'], {
+      cwd: join(root, 'plugins', 'ts3pilot-wp'),
     }),
 ]);
 

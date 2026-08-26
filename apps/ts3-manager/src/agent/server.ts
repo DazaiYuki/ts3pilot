@@ -178,9 +178,9 @@ function authenticate(
     }
   }
 
-  const timestamp = req.headers['x-ts3cops-timestamp'];
-  const nonce = req.headers['x-ts3cops-nonce'];
-  const signature = req.headers['x-ts3cops-signature'];
+  const timestamp = req.headers['x-ts3pilot-timestamp'];
+  const nonce = req.headers['x-ts3pilot-nonce'];
+  const signature = req.headers['x-ts3pilot-signature'];
   if (typeof timestamp !== 'string' || typeof nonce !== 'string' || typeof signature !== 'string') {
     throw new AppError(ErrorCode.AUTH, 'Missing authentication headers', { httpStatus: 401 });
   }

@@ -10,7 +10,7 @@ export const PROTOCOL_TEST_VECTOR = {
   body: '{}',
   bodyHash: '44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a',
   secret: 'test-secret',
-  signature: '0343c62690c421dda718aaa6f6f29289189ddfe9fae76b679e110c3f92b6145a',
+  signature: 'b8ea68ab27fdc4bc30753a62507e9030bcb217a8f897807ea097728d5436836b',
 } as const;
 
 test('canonical string matches the protocol v1 format', () => {
@@ -24,7 +24,7 @@ test('canonical string matches the protocol v1 format', () => {
   assert.equal(
     canonical,
     [
-      'TS3COPS-HMAC-SHA256 v1',
+      'TS3PILOT-HMAC-SHA256 v1',
       '1700000000',
       'a'.repeat(32),
       'POST',

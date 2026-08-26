@@ -2,12 +2,25 @@
 
 All notable changes to TS3 Community Operations Suite are documented here.
 
+## [Unreleased]
+
+### Changed
+
+- Global rebrand from `ts3cops` to **TS3Pilot**: npm scope `@ts3pilot/*`,
+  WordPress plugin `ts3pilot-wp`, option/transient prefix `ts3pilot_*` (with
+  legacy `ts3cops_*` read fallback), REST namespace `ts3pilot/v1`, HMAC protocol
+  `TS3PILOT-HMAC-SHA256 v1`.
+- Root documentation consolidated into `docs/` (architecture/deployment/
+  development/status/notice + bilingual quick starts).
+- CI: Node engines relaxed to >= 22.6, PHPUnit 10.5+ added for PHP 8.1,
+  `engine-strict` removed.
+
 ## [0.1.0] - 2026-08-26
 
 ### Added
 
 - **Monorepo structure**: `apps/ts3-manager` (TypeScript CLI + Agent, zero
-  runtime dependencies) and `plugins/ts3-operations-wp` (WordPress plugin).
+  runtime dependencies) and `plugins/ts3pilot-wp` (WordPress plugin).
 - **CLI / Agent**
   - Commands: config, service start/stop/restart/status, api lifecycle
     (enable/disable/status/pair/rotate-secret/unpair), agent, doctor, adopt,

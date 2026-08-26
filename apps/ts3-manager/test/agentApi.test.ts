@@ -29,9 +29,9 @@ function signedHeaders(secret: string, method: string, path: string, body: strin
     bodyHash: bodyHash(body),
   });
   return {
-    'x-ts3cops-timestamp': timestamp,
-    'x-ts3cops-nonce': nonce,
-    'x-ts3cops-signature': signature,
+    'x-ts3pilot-timestamp': timestamp,
+    'x-ts3pilot-nonce': nonce,
+    'x-ts3pilot-signature': signature,
     'content-type': 'application/json',
   };
 }
@@ -323,7 +323,7 @@ test('identity challenge register endpoint stores the challenge', async () => {
     const body = JSON.stringify({
       wpUserId: 42,
       code: 'IDENT42',
-      webhookUrl: 'http://127.0.0.1:9/wp-json/ts3-operations/v1/identity/callback',
+      webhookUrl: 'http://127.0.0.1:9/wp-json/ts3pilot/v1/identity/callback',
       webhookSecret: 'webhook-secret-value',
     });
     const response = await request(handle, 'POST', '/v1/identity/challenge', body, signedHeaders('test-credential', 'POST', '/v1/identity/challenge', body));

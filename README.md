@@ -1,78 +1,149 @@
-# TS3 Community Operations Suite（TS3 社区运营套件）
+# TS3Pilot — TS3 Community Operations Suite（TS3 社区运营套件）
 
 A decoupled, secure TeamSpeak 3 management suite with an independent CLI/Agent
 host control plane and optional WordPress integration.
 
 一套本地优先（local-first）的 TeamSpeak 3 服务器运维工具链：`ts3-manager`
 CLI/Agent 独立可用，WordPress 插件是可选的 Web 控制平面，两者通过受控的
-`/v1` Agent API 解耦协作。
+`/v1` Agent API 解耦协作。无论你是**从零搭建新服**，还是**接管已有 TS3
+服务器**，都可以从这里开始。
 
 > 本项目不重新分发 TeamSpeak Server 二进制。用户必须自行从 TeamSpeak
-> 官方渠道获取并在遵守 TeamSpeak 官方许可条款的前提下使用。
-> 项目代码本身采用 Apache-2.0 许可，与 TeamSpeak 软件许可严格分离。
+> 官方渠道获取并遵守其许可条款；项目代码本身采用 Apache-2.0，与 TeamSpeak
+> 软件许可严格分离。
 
-## 组件
+## 架构一览（CLI + Agent + WP）
 
-| 组件 | 目录 | 说明 |
-| --- | --- | --- |
-| ts3-manager（CLI/Agent） | `apps/ts3-manager` | TypeScript CLI + Agent（Host Control Plane），零运行时依赖 |
-| ts3-operations-wp（WP 插件） | `plugins/ts3-operations-wp` | WordPress 插件（可选 Web Control Plane） |
-| 沙盒/文档 | `sandbox/`、`docs/` | Docker 集成测试入口与架构/安全/API 文档 |
-
-## 核心设计
-
-- **本地管理工具独立可用**：CLI 在没有 WordPress、没有网络的情况下也能完成
-  状态、启停、备份、日志、诊断等操作。
-- **Agent 是受控的 Host Control Plane，不是远程 Shell**：所有系统操作映射到
-  固定动作枚举，不存在任意命令执行接口。
-- **API 默认关闭**：`api enable` 是明确的安全边界；默认只监听
-  `127.0.0.1:17880`，与 TS3 WebQuery（10080/10443）等端口严格分离。
-- **HMAC-SHA256 认证**：timestamp + nonce + method + path + body-hash 的
-  canonical string，恒定时间比较，防重放、防篡改；配对码一次性、15 分钟有效。
-- **Capability 模型**：每个端点声明所需能力；高风险能力（update/restore/
-  restart）默认不授予，需显式 `--high-risk`。
-- **WP 与 TS3 权限完全平行**：`manage_ts3_*` capability 只决定网页端能做什么；
-  绝不自动同步或改变 TeamSpeak 内的权限。
-
-## Windows 开发环境快速开始
-
-```powershell
-npm install
-npm run verify
-npm run release   # 生成 dist/release/ 下的 CLI tar.gz 与 WP 插件 zip
-
-# 端到端冒烟（全部在 mock 模式下）
-npm run cli -- config init --config .\tmp\dev\config.json
-npm run cli -- status --config .\tmp\dev\config.json
-npm run cli -- api enable --port 17880 --config .\tmp\dev\config.json
-npm run cli -- agent --config .\tmp\dev\config.json
+```
+┌──────────────────┐      ┌────────────────────────┐      ┌─────────────────┐
+│  浏览器 / 前台     │      │  ts3-manager Agent      │      │   TeamSpeak 3   │
+│  (状态卡/短代码)   │      │  (Host Control Plane)  │      │   (Service)     │
+└────────┬─────────┘      └───────────┬────────────┘      └────────┬────────┘
+         │ HTTP(S)                    │ HMAC-SHA256 /v1            │ TS3 协议
+         ▼                            ▼                            ▼
+┌──────────────────┐      ┌────────────────────────┐      ┌─────────────────┐
+│  WordPress 插件   │ ───▶ │  ts3-manager CLI        │ ───▶ │  Voice/Query/   │
+│  (可选 Web CP)    │      │  (本地管理工具)          │      │  FileTransfer   │
+└──────────────────┘      └────────────────────────┘      └─────────────────┘
 ```
 
-Windows 上 systemd/script provider 不可用，自动降级为 **Mock ServiceManager**；
-TS3 连接默认使用 **Mock TeamSpeak 客户端**（数据字段完整、可重复、显式标记
-`mock: true`）。真实 Linux/systemd/TS3 行为由 provider 隔离，Linux 上无需改动代码。
+- **CLI/Agent（必须）**：`apps/ts3-manager`，TypeScript，零运行时依赖。
+- **WordPress 插件（可选）**：`plugins/ts3pilot-wp`，通过 HMAC 安全配对。
+- 两者都只面向固定动作枚举，**不存在任意命令执行接口**。
+
+## 5-Minute Quick Start（5 分钟极速上手）
+
+### 场景 A：新服主从零安装
+
+1. 从 TeamSpeak 官方渠道下载并解压 TS3 Server，按官方说明接受许可并首次启动
+   （`install` 执行管线为后续里程碑，当前请先手动完成官方安装）。
+2. 配置路径并检查：`ts3-manager config set ts3.installPath <你的安装目录>`，
+   然后 `ts3-manager doctor`。
+3. 开启 Agent：`ts3-manager api enable` → 复制**配对码**。
+4. 启动 Agent：`ts3-manager agent`（生产环境建议用 systemd 托管）。
+5. 安装 WordPress 插件 → Settings 粘贴配对码完成一键配对。
+
+### 场景 B：已有 TS3 服务器接管
+
+1. `ts3-manager config set ts3.installPath <你的安装目录>`。
+2. `ts3-manager adopt`（只读分析，绝不改文件）→ 按建议配置
+   `query_ip_whitelist` 与受限 ServerQuery 凭据。
+3. `ts3-manager doctor` 确认端口/权限/Query 连通性。
+4. `ts3-manager api enable` → `ts3-manager agent` → WP 配对。
+
+### 步骤一：CLI 工具与 Agent 启动
+
+```bash
+# 方式 1：源码运行（开发/自用）
+npm install
+npm run cli -- config init                    # 生成本地配置
+npm run cli -- doctor                          # 环境诊断
+npm run cli -- api enable --port 17880        # 开启 API，输出一次性配对码
+npm run cli -- agent                           # 前台启动 Agent
+
+# 方式 2：发布包（Linux 生产）
+# 下载 dist/release/ts3-manager-v*.tar.gz 并解压，然后：
+node dist/cli/index.js config init
+node dist/cli/index.js api enable
+```
+
+### 步骤二：WordPress 插件安装与配对
+
+1. 上传 `ts3pilot-wp-v*.zip` 到 `wp-content/plugins/` 并**激活**。
+2. 进入 **TS3Pilot → Settings**。
+3. 输入 Agent 地址（默认 `http://127.0.0.1:17880`）与**配对码**，点击
+   **Complete pairing**。
+4. 成功后 Settings 的 Node Registry 会出现该节点；后台顶部的 Node Switcher
+   可在多节点间切换。
+
+### 步骤三：前台展示
+
+**Gutenberg 区块**：编辑器搜索 "TS3 Status"，插入后配置显示字段与节点。
+
+**经典短代码**（与编辑器无关，永远可用）：
+
+```html
+[ts3_status]
+[ts3_status node="你的节点ID" show_channels="true" theme="auto"]
+[ts3_identity]
+```
+
+## 常用 CLI 命令速查
+
+| 命令 | 说明 |
+| --- | --- |
+| `ts3-manager status / start / stop / restart` | 服务状态与启停 |
+| `ts3-manager doctor` | 深度诊断（端口/权限/SQLite/Query 鉴权） |
+| `ts3-manager adopt` | 只读接管分析（已有服务器） |
+| `ts3-manager backup [--dest x.tar.gz]` | 真实 tar.gz 备份 + manifest |
+| `ts3-manager restore --backup x.tar.gz --dry-run` | 恢复预检（不写盘） |
+| `ts3-manager restore --backup x.tar.gz --force` | 真实恢复（破坏性） |
+| `ts3-manager logs --lines 100` | 查看日志 |
+| `ts3-manager api enable / status / disable` | Agent API 生命周期 |
+| `ts3-manager identity worker once` | 身份核验单轮扫描 |
+| `ts3-manager systemd generate ts3server` | 生成加固 systemd unit |
+
+完整列表见 [docs/quickstart-zh.md](docs/quickstart-zh.md) 与 CLI `--help`。
+
+## WordPress 后台能力与权限
+
+| Capability | 后台能力 |
+| --- | --- |
+| `manage_ts3_view` | Dashboard、节点切换 |
+| `manage_ts3_clients` | 客户端列表、Kick / Poke / Move |
+| `manage_ts3_channels` | 频道树、创建/编辑/移动/删除 |
+| `manage_ts3_server` | 服务器配置类操作 |
+| `manage_ts3_maintenance` | Restart 等高危维护动作 |
+| `manage_ts3_users` | 身份绑定与挑战管理 |
+
+激活时默认授予 administrator，站长可按角色自定义。**WordPress 权限与
+TeamSpeak 权限完全平行**，互不自动同步。
+
+## 安全要点
+
+- Agent API 默认只监听 `127.0.0.1:17880`，与 TS3 WebQuery/Query 端口严格分离。
+- HMAC-SHA256 v1 签名 + 时间窗 + nonce 防重放；配对码一次性、15 分钟有效。
+- 多节点凭据独立存储与签名，杜绝跨节点凭据越界。
+- 恢复/解包有路径沙箱，拒绝 `..`、绝对路径与符号链接。
 
 ## 文档索引
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — 组件边界、端口、认证、权限、数据流、发布策略
+- [docs/quickstart-zh.md](docs/quickstart-zh.md) — 中文保姆级上手 + FAQ
+- [docs/quickstart-en.md](docs/quickstart-en.md) — English quick start + FAQ
+- [docs/architecture.md](docs/architecture.md) — 组件边界、端口、认证、数据流
 - [SECURITY.md](SECURITY.md) — 威胁模型与缓解措施
-- [DEVELOPMENT.md](DEVELOPMENT.md) — 开发环境、测试矩阵、Docker 沙盒
-- [DEPLOYMENT.md](DEPLOYMENT.md) — Linux 部署、systemd 加固、防火墙、配对
+- [docs/development.md](docs/development.md) — 开发环境、测试矩阵
+- [docs/deployment.md](docs/deployment.md) — Linux 部署、systemd 加固
+- [docs/status.md](docs/status.md) — 当前实现状态与已知限制
 - [docs/api/agent-api-v1.md](docs/api/agent-api-v1.md) — Agent API 协议
-- [STATUS.md](STATUS.md) — 当前实现状态与已知限制
+- [CHANGELOG.md](CHANGELOG.md) — 版本变更记录
 
-## 许可证与第三方声明
+## License / 第三方声明
 
-本项目代码：Apache-2.0（见 [LICENSE](LICENSE)）。第三方依赖与 TeamSpeak
-许可边界见 [NOTICE.md](NOTICE.md)。
+项目代码：Apache-2.0（[LICENSE](LICENSE)）。第三方依赖与 TeamSpeak 许可边界
+见 [docs/notice.md](docs/notice.md)。
 
 ## Authors & Credits
 
 - **Architecture & Maintainer:** dazaiyuki
-- **AI Pairing Engineer:** DeepSeek-V4-Flash (via OpenAI Codex CLI)
-
-Commit trailer convention used in this repository:
-
-```text
-Co-authored-by: DeepSeek-V4-Flash <noreply@deepseek.com>
-```
+- **AI-assisted development tool:** OpenAI Codex CLI

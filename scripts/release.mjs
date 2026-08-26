@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { basename, join, relative } from 'node:path';
 import { writeTarGzArchive } from '../apps/ts3-manager/src/system/backupEngine.ts';
 
 const root = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
@@ -10,7 +10,7 @@ const releaseDir = join(root, 'dist', 'release');
 console.log(`Building release v${version}...`);
 
 // 1. Compile the CLI/Agent.
-execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build', '--workspace', '@ts3cops/ts3-manager'], {
+execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build', '--workspace', '@ts3pilot/ts3-manager'], {
   cwd: root,
   stdio: 'inherit',
   shell: process.platform === 'win32',
@@ -24,17 +24,17 @@ cpSync(join(root, 'apps', 'ts3-manager', 'dist'), join(cliStage, 'dist'), { recu
 for (const file of ['package.json', 'README.md', 'config.example.json']) {
   cpSync(join(root, 'apps', 'ts3-manager', file), join(cliStage, file));
 }
-for (const file of ['LICENSE', 'NOTICE.md', 'README.md', 'ARCHITECTURE.md', 'DEPLOYMENT.md']) {
-  if (existsSync(join(root, file))) cpSync(join(root, file), join(cliStage, file));
+for (const file of ['LICENSE', 'docs/notice.md', 'README.md', 'docs/architecture.md', 'docs/deployment.md']) {
+  if (existsSync(join(root, file))) cpSync(join(root, file), join(cliStage, basename(file)));
 }
 const cliArchive = join(releaseDir, `ts3-manager-v${version}.tar.gz`);
 const cliEntries = collectEntries(cliStage);
 await writeTarGzArchive(cliEntries, cliArchive);
 
 // 3. Stage the WordPress plugin and create a standard .zip.
-const wpRoot = join(root, 'plugins', 'ts3-operations-wp');
-const wpStageRoot = join(releaseDir, `ts3-operations-wp-v${version}`);
-const wpStage = join(wpStageRoot, 'ts3-operations-wp');
+const wpRoot = join(root, 'plugins', 'ts3pilot-wp');
+const wpStageRoot = join(releaseDir, `ts3pilot-wp-v${version}`);
+const wpStage = join(wpStageRoot, 'ts3pilot-wp');
 rmSync(wpStageRoot, { recursive: true, force: true });
 mkdirSync(wpStage, { recursive: true });
 const wpFiles = collectWpFiles(wpRoot);
@@ -43,8 +43,8 @@ for (const file of wpFiles) {
   mkdirSync(join(wpStage, file.split(/[\\/]/).slice(0, -1).join('/')), { recursive: true });
   cpSync(join(wpRoot, file), target);
 }
-const wpArchive = join(releaseDir, `ts3-operations-wp-v${version}.zip`);
-execFileSync('tar', ['-a', '-cf', wpArchive, '-C', wpStageRoot, 'ts3-operations-wp'], { stdio: 'inherit' });
+const wpArchive = join(releaseDir, `ts3pilot-wp-v${version}.zip`);
+execFileSync('tar', ['-a', '-cf', wpArchive, '-C', wpStageRoot, 'ts3pilot-wp'], { stdio: 'inherit' });
 
 // 4. Report.
 for (const artifact of [cliArchive, wpArchive]) {

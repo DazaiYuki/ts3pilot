@@ -1,7 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { constantTimeEqual, sha256Hex } from './secrets.ts';
 
-export const AUTH_PROTOCOL = 'TS3COPS-HMAC-SHA256';
+export const AUTH_PROTOCOL = 'TS3PILOT-HMAC-SHA256';
 export const AUTH_PROTOCOL_VERSION = 1;
 
 export interface CanonicalInput {

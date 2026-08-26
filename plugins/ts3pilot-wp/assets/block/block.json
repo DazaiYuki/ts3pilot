@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "ts3pilot/status",
+  "title": "TS3 Status",
+  "category": "widgets",
+  "icon": "format-status",
+  "description": "Show a TeamSpeak 3 server status card (server-side rendered, no agent credentials exposed).",
+  "keywords": [ "teamspeak", "ts3", "status" ],
+  "textdomain": "ts3pilot",
+  "attributes": {
+    "node": { "type": "string", "default": "" },
+    "showName": { "type": "boolean", "default": true },
+    "showOnline": { "type": "boolean", "default": true },
+    "showMax": { "type": "boolean", "default": true },
+    "showVersion": { "type": "boolean", "default": false },
+    "showChannels": { "type": "boolean", "default": false },
+    "collapsible": { "type": "boolean", "default": false },
+    "theme": { "type": "string", "default": "auto" },
+    "joinPolicy": { "type": "string", "default": "hidden" },
+    "joinRole": { "type": "string", "default": "" }
+  },
+  "supports": {
+    "html": false
+  },
+  "editorScript": "file:./index.js"
+}

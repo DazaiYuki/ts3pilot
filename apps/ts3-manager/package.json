@@ -1,12 +1,12 @@
 {
-  "name": "@ts3cops/ts3-manager",
+  "name": "@ts3pilot/ts3-manager",
   "version": "0.1.0",
   "private": true,
   "description": "Local-first TeamSpeak 3 server management CLI and controlled Host Control Plane agent.",
   "type": "module",
   "license": "Apache-2.0",
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=22.6.0"
   },
   "bin": {
     "ts3-manager": "dist/cli/index.js"

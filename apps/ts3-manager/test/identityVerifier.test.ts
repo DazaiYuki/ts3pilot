@@ -89,9 +89,9 @@ function startWebhookServer(): Promise<{ server: Server; port: number; captured:
       req.on('end', () => {
         captured.push({
           headers: {
-            'x-ts3cops-timestamp': String(req.headers['x-ts3cops-timestamp'] ?? ''),
-            'x-ts3cops-nonce': String(req.headers['x-ts3cops-nonce'] ?? ''),
-            'x-ts3cops-signature': String(req.headers['x-ts3cops-signature'] ?? ''),
+            'x-ts3pilot-timestamp': String(req.headers['x-ts3pilot-timestamp'] ?? ''),
+            'x-ts3pilot-nonce': String(req.headers['x-ts3pilot-nonce'] ?? ''),
+            'x-ts3pilot-signature': String(req.headers['x-ts3pilot-signature'] ?? ''),
           },
           body,
         });
@@ -129,7 +129,7 @@ test('identity verifier matches a nickname code, consumes it and delivers a sign
     const secret = 'webhook-secret-value';
     const store = new ChallengeStore();
     const code = 'A1B2C3D4';
-    makeChallenge(store, code, 42, { url: `http://127.0.0.1:${port}/wp-json/ts3-operations/v1/identity/callback`, secret });
+    makeChallenge(store, code, 42, { url: `http://127.0.0.1:${port}/wp-json/ts3pilot/v1/identity/callback`, secret });
     const ts3 = new FakeTs3Client([{ clientId: 1, nickname: `Player ${code}`, channelId: 1, clientType: 0, uniqueId: 'ts3uid-abc' }]);
     const verifier = new ChallengeVerifier(
       store,
@@ -152,12 +152,12 @@ test('identity verifier matches a nickname code, consumes it and delivers a sign
     assert.equal(payload.ts3Uid, 'ts3uid-abc');
     assert.equal(payload.nodeId, 'node-1');
     const valid = verifySignature(secret, {
-      timestamp: request0.headers['x-ts3cops-timestamp'] ?? '',
-      nonce: request0.headers['x-ts3cops-nonce'] ?? '',
+      timestamp: request0.headers['x-ts3pilot-timestamp'] ?? '',
+      nonce: request0.headers['x-ts3pilot-nonce'] ?? '',
       method: 'POST',
-      path: '/wp-json/ts3-operations/v1/identity/callback',
+      path: '/wp-json/ts3pilot/v1/identity/callback',
       bodyHash: bodyHash(request0.body),
-    }, request0.headers['x-ts3cops-signature'] ?? '');
+    }, request0.headers['x-ts3pilot-signature'] ?? '');
     assert.equal(valid, true);
 
     const second = await verifier.verifyOnce();

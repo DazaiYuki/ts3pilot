@@ -15,14 +15,14 @@
 
 | Header | 说明 |
 | --- | --- |
-| `X-TS3COPS-Timestamp` | Unix 秒（与服务器偏差 ≤ 300s，可配置） |
-| `X-TS3COPS-Nonce` | 每次请求唯一；重复使用返回 401 REPLAY_DETECTED |
-| `X-TS3COPS-Signature` | HMAC-SHA256 hex，小写 |
+| `X-TS3PILOT-Timestamp` | Unix 秒（与服务器偏差 ≤ 300s，可配置） |
+| `X-TS3PILOT-Nonce` | 每次请求唯一；重复使用返回 401 REPLAY_DETECTED |
+| `X-TS3PILOT-Signature` | HMAC-SHA256 hex，小写 |
 
 canonical string：
 
 ```text
-TS3COPS-HMAC-SHA256 v1
+TS3PILOT-HMAC-SHA256 v1
 <timestamp>
 <nonce>
 <METHOD>
@@ -139,7 +139,7 @@ credential 只返回这一次。
   "wpUserId": 42,
   "code": "A1B2C3D4",
   "expiresAt": 1735000000000,
-  "webhookUrl": "https://example.test/wp-json/ts3-operations/v1/identity/callback",
+  "webhookUrl": "https://example.test/wp-json/ts3pilot/v1/identity/callback",
   "webhookSecret": "long-random-secret"
 }
 ```
