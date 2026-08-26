@@ -46,5 +46,22 @@ final class Assets {
 
 	public static function frontend(): void {
 		wp_enqueue_style( 'ts3ops-frontend', TS3OPS_PLUGIN_URL . 'assets/frontend.css', array(), TS3OPS_VERSION );
+		wp_enqueue_script( 'ts3ops-identity', TS3OPS_PLUGIN_URL . 'assets/identity.js', array(), TS3OPS_VERSION, true );
+		wp_localize_script(
+			'ts3ops-identity',
+			'ts3OpsIdentity',
+			array(
+				'restUrl' => esc_url_raw( rest_url( 'ts3-operations/v1/' ) ),
+				'nonce'   => wp_create_nonce( 'wp_rest' ),
+				'i18n'    => array(
+					'requestFailed'      => __( '请求失败', 'ts3-operations' ),
+					'currentStatus'      => __( '当前状态：', 'ts3-operations' ),
+					'verified'           => __( '绑定成功', 'ts3-operations' ),
+					'waiting'            => __( '等待自动核验…', 'ts3-operations' ),
+					'instructionsPrefix' => __( '验证码', 'ts3-operations' ),
+					'instructionsSuffix' => __( '：请在 TeamSpeak 中把昵称改为包含该验证码的文本，等待自动核验。', 'ts3-operations' ),
+				),
+			)
+		);
 	}
 }

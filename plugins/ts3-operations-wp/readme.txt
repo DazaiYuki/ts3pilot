@@ -46,5 +46,7 @@ No. WordPress capabilities and TeamSpeak permissions are completely separate.
 == Changelog ==
 
 = 0.1.0 =
-* Initial MVP: status, clients (kick/poke/move), channels, identity, pairing,
-  audit log, adaptive front-end theming.
+* Initial MVP: status, clients (kick/poke/move), channels, pairing, audit log,
+  adaptive front-end theming.
+* Automated identity verification: one-time challenge codes verified by the
+  agent from the TeamSpeak nickname, then applied via signed webhook callback.

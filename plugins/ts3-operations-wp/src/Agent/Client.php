@@ -144,6 +144,14 @@ final class Client {
 	}
 
 	/**
+	 * @param array<string, mixed> $input
+	 * @return array<string, mixed>
+	 */
+	public function register_identity_challenge( array $input ): array {
+		return $this->request( 'POST', '/v1/identity/challenge', $input );
+	}
+
+	/**
 	 * @param array<string, mixed> $body
 	 * @return array<string, mixed>
 	 */

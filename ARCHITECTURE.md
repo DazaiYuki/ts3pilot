@@ -40,6 +40,8 @@
   （banner/login/use 握手、串行命令队列、通知回调、重连骨架），并用
   假 TCP Server 完成契约测试。
 - `src/agent/` — HTTP 服务器、路由表、HMAC 认证、能力守卫。
+- `src/identity/` — 身份绑定核验：挑战存储（单次消费/TTL/尝试锁定）、
+  轮询核验 Worker、HMAC 签名 webhook 通知。
 - `src/services/` — 端口探测、日志读取、备份/恢复（含 manifest 与校验和）。
 
 ### 2.2 ts3-operations-wp（WP 插件，`plugins/ts3-operations-wp`）
@@ -142,6 +144,22 @@ WP 用户在网站上的 capability 决定网页端操作；TS3 Server Group 只
 ### 6.2 管理动作（以 Kick 为例）
 
 ```
+
+### 6.3 自动化身份绑定（Identity Verification）
+
+```
+WP 用户（[ts3_identity] 短代码）→ POST /identity/me/challenge
+      → 本地 Mapping 置 pending + 生成一次性挑战码
+      → Agent POST /v1/identity/challenge（HMAC + capability）
+用户把验证码写入 TS3 昵称
+Agent Worker 轮询 clientlist → 命中挑战码 → 单次消费 → 读取 client_unique_identifier
+      → HMAC 签名 webhook → WP POST /identity/callback
+      → 校验签名/时间窗/state → Mapping 置 verified（method=agent-auto）
+```
+
+防暴力：挑战码 10 分钟过期、单次消费、尝试锁定；回调校验 HMAC + 时间窗 +
+node 身份；昵称匹配使用 token 边界，避免误撞。`away` 字段匹配与 Bot 私聊通道
+为后续可选项（`identity.verify.field` 已预留）。
 管理员 → WP Clients 页 → REST POST /clients/kick
       → permission_callback（manage_ts3_clients）
       → Agent POST /v1/ts3/clients/kick（HMAC + capability ts3.clients.kick）

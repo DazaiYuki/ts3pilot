@@ -14,6 +14,8 @@ use Ts3Ops\Agent\Client;
 use Ts3Ops\Audit\AuditLog;
 use Ts3Ops\Capabilities;
 use Ts3Ops\Identity\Mapping;
+use Ts3Ops\Identity\Callback;
+use Ts3Ops\Identity\Challenge;
 use Ts3Ops\Security\Sanitizer;
 use Ts3Ops\Services\StatusService;
 use Ts3Ops\Settings\Repository;
@@ -169,6 +171,33 @@ final class AdminController {
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'identity_status' ),
 				'permission_callback' => array( $this, 'can_users' ),
+			)
+		);
+		register_rest_route(
+			Routes::NAMESPACE,
+			'/identity/me',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'identity_me' ),
+				'permission_callback' => array( $this, 'can_self_service' ),
+			)
+		);
+		register_rest_route(
+			Routes::NAMESPACE,
+			'/identity/me/challenge',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'identity_me_challenge' ),
+				'permission_callback' => array( $this, 'can_self_service' ),
+			)
+		);
+		register_rest_route(
+			Routes::NAMESPACE,
+			'/identity/callback',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'identity_callback' ),
+				'permission_callback' => '__return_true',
 			)
 		);
 		register_rest_route(
@@ -457,6 +486,102 @@ final class AdminController {
 		return new WP_REST_Response( array( 'ok' => true ) );
 	}
 
+	public function identity_me(): WP_REST_Response {
+		$user_id = get_current_user_id();
+		if ( $user_id <= 0 ) {
+			return new WP_REST_Response( array( 'error' => 'Not logged in.' ), 401 );
+		}
+		return new WP_REST_Response( array( 'mapping' => Mapping::get( $user_id ) ) );
+	}
+
+	public function identity_me_challenge(): WP_REST_Response {
+		$user_id = get_current_user_id();
+		if ( $user_id <= 0 ) {
+			return new WP_REST_Response( array( 'error' => 'Not logged in.' ), 401 );
+		}
+		$mapping = Mapping::get( $user_id );
+		if ( ! in_array( $mapping['status'], array( 'unbound', 'pending' ), true ) ) {
+			return new WP_REST_Response( array( 'error' => 'Binding already resolved.' ), 409 );
+		}
+		$code = Challenge::start( $user_id );
+		Mapping::set(
+			$user_id,
+			array(
+				'status'   => 'pending',
+				'method'   => 'challenge',
+				'bound_at' => time(),
+			)
+		);
+		try {
+			$this->client->register_identity_challenge(
+				array(
+					'wpUserId'      => $user_id,
+					'code'          => $code,
+					'expiresAt'     => ( time() + 600 ) * 1000,
+					'webhookUrl'    => rest_url( 'ts3-operations/v1/identity/callback' ),
+					'webhookSecret' => (string) $this->repository->get( 'agent_credential' ),
+				)
+			);
+		} catch ( AgentException $error ) {
+			AuditLog::append( 'identity.me.challenge', 'user:' . $user_id, 'failed', $error->error_code );
+			return new WP_REST_Response( array( 'error' => $error->getMessage() ), 502 );
+		}
+		AuditLog::append( 'identity.me.challenge', 'user:' . $user_id, 'success' );
+		return new WP_REST_Response(
+			array(
+				'ok'           => true,
+				'code'         => $code,
+				'expires_at'   => time() + 600,
+				'instructions' => '在 TeamSpeak 中把昵称改为包含验证码的文本（例如："Player CODE"），等待自动核验。',
+			)
+		);
+	}
+
+	public function identity_callback( WP_REST_Request $request ): WP_REST_Response {
+		$headers  = array(
+			'x-ts3cops-timestamp' => $request->get_header( 'x-ts3cops-timestamp' ),
+			'x-ts3cops-nonce'     => $request->get_header( 'x-ts3cops-nonce' ),
+			'x-ts3cops-signature' => $request->get_header( 'x-ts3cops-signature' ),
+		);
+		$raw_body = (string) $request->get_body();
+		$path     = (string) wp_parse_url( (string) ( $_SERVER['REQUEST_URI'] ?? '/' ), PHP_URL_PATH );
+		if ( ! Callback::verify( $this->repository, $headers, $raw_body, $path ) ) {
+			return new WP_REST_Response( array( 'error' => 'Invalid signature.' ), 401 );
+		}
+		$payload = json_decode( $raw_body, true );
+		if ( ! is_array( $payload ) ) {
+			return new WP_REST_Response( array( 'error' => 'Invalid payload.' ), 400 );
+		}
+		$wp_user_id = (int) ( $payload['wpUserId'] ?? 0 );
+		$ts3_uid    = sanitize_text_field( (string) ( $payload['ts3Uid'] ?? '' ) );
+		$node_id    = sanitize_text_field( (string) ( $payload['nodeId'] ?? '' ) );
+		if ( $wp_user_id <= 0 || '' === $ts3_uid || strlen( $ts3_uid ) > 128 ) {
+			return new WP_REST_Response( array( 'error' => 'Invalid payload.' ), 400 );
+		}
+		$configured_node = (string) $this->repository->get( 'agent_node_id' );
+		if ( '' !== $configured_node && $node_id !== $configured_node ) {
+			return new WP_REST_Response( array( 'error' => 'Unknown node.' ), 403 );
+		}
+		if ( false === get_userdata( $wp_user_id ) ) {
+			return new WP_REST_Response( array( 'error' => 'Unknown user.' ), 404 );
+		}
+		$mapping = Mapping::get( $wp_user_id );
+		if ( 'verified' === $mapping['status'] && $mapping['ts3_uid'] === $ts3_uid ) {
+			return new WP_REST_Response(
+				array(
+					'ok'         => true,
+					'idempotent' => true,
+				)
+			);
+		}
+		if ( ! in_array( $mapping['status'], array( 'unbound', 'pending' ), true ) ) {
+			return new WP_REST_Response( array( 'error' => 'Mapping state does not allow verification.' ), 409 );
+		}
+		Mapping::mark_verified( $wp_user_id, $ts3_uid, 'agent-auto', $node_id );
+		AuditLog::append( 'identity.verified', 'user:' . $wp_user_id, 'success', '', $node_id );
+		return new WP_REST_Response( array( 'ok' => true ) );
+	}
+
 	public function can_view(): bool {
 		return current_user_can( Capabilities::MANAGE_VIEW );
 	}
@@ -475,5 +600,9 @@ final class AdminController {
 
 	public function can_users(): bool {
 		return current_user_can( Capabilities::MANAGE_USERS );
+	}
+
+	public function can_self_service(): bool {
+		return is_user_logged_in();
 	}
 }

@@ -10,6 +10,7 @@ import {
   clientsHandler,
   disableHandler,
   healthHandler,
+  identityChallengeRegisterHandler,
   infoHandler,
   kickHandler,
   maintenanceHandler,
@@ -59,6 +60,7 @@ export const ROUTES: readonly RouteSpec[] = [
   { method: 'POST', path: '/v1/agent/rotate-secret', auth: 'hmac', capability: Capability.AGENT_ROTATE_SECRET, handler: rotateSecretHandler },
   { method: 'POST', path: '/v1/agent/unpair', auth: 'hmac', capability: Capability.AGENT_UNPAIR, handler: unpairHandler },
   { method: 'POST', path: '/v1/agent/disable', auth: 'hmac', capability: Capability.AGENT_API_DISABLE, handler: disableHandler },
+  { method: 'POST', path: '/v1/identity/challenge', auth: 'hmac', capability: Capability.IDENTITY_CHALLENGE_REGISTER, handler: identityChallengeRegisterHandler },
 ];
 
 export function findRoute(method: string, path: string): { route: RouteSpec; methodMismatch: boolean } | undefined {

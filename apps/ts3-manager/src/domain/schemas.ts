@@ -11,6 +11,7 @@ import {
   optionalBoolean,
   optionalNumber,
   optionalString,
+  ValidationError,
 } from './validate.ts';
 
 export type RunMode = 'development' | 'local-integration' | 'production';
@@ -80,6 +81,13 @@ export interface LoggingConfig {
   json: boolean;
 }
 
+export interface IdentityVerifyConfig {
+  enabled: boolean;
+  pollIntervalMs: number;
+  field: 'nickname' | 'away' | 'nickname-away';
+  maxMatchesPerCycle: number;
+}
+
 export interface AppConfig {
   schemaVersion: number;
   nodeId: string;
@@ -89,6 +97,7 @@ export interface AppConfig {
   agent: AgentConfig;
   system: SystemConfig;
   logging: LoggingConfig;
+  identity: { verify: IdentityVerifyConfig };
 }
 
 export const PORT_VOICE = 9987;
@@ -152,6 +161,14 @@ export function defaultConfig(overrides: Partial<AppConfig> = {}): AppConfig {
       level: 'info',
       json: false,
     },
+    identity: {
+      verify: {
+        enabled: false,
+        pollIntervalMs: 10000,
+        field: 'nickname',
+        maxMatchesPerCycle: 5,
+      },
+    },
     ...overrides,
   };
 }
@@ -178,6 +195,8 @@ export function validateConfig(value: unknown): AppConfig {
   const installRecord = expectRecord(ts3Record.install ?? {}, 'config.ts3.install');
   const systemRecord = expectRecord(record.system ?? {}, 'config.system');
   const loggingRecord = expectRecord(record.logging ?? {}, 'config.logging');
+  const identityRecord = expectRecord(record.identity ?? {}, 'config.identity');
+  const verifyRecord = expectRecord(identityRecord.verify ?? {}, 'config.identity.verify');
   const capabilities = expectStringArray(agentRecord.capabilities ?? defaultCapabilities(), 'config.agent.capabilities');
   for (const capability of capabilities) {
     if (!isCapability(capability)) {
@@ -227,6 +246,14 @@ export function validateConfig(value: unknown): AppConfig {
     logging: {
       level: expectEnum(loggingRecord.level ?? 'info', 'config.logging.level', ['debug', 'info', 'warn', 'error'] as const),
       json: expectBoolean(loggingRecord.json ?? false, 'config.logging.json'),
+    },
+    identity: {
+      verify: {
+        enabled: expectBoolean(verifyRecord.enabled ?? false, 'config.identity.verify.enabled'),
+        pollIntervalMs: expectNumber(verifyRecord.pollIntervalMs ?? 10000, 'config.identity.verify.pollIntervalMs', { integer: true, min: 2000, max: 600000 }),
+        field: expectEnum(verifyRecord.field ?? 'nickname', 'config.identity.verify.field', ['nickname', 'away', 'nickname-away'] as const),
+        maxMatchesPerCycle: expectNumber(verifyRecord.maxMatchesPerCycle ?? 5, 'config.identity.verify.maxMatchesPerCycle', { integer: true, min: 1, max: 100 }),
+      },
     },
   };
 }
@@ -377,6 +404,38 @@ export function validateSystemActionBody(value: unknown): SystemActionBody {
   return {
     action: expectEnum(record.action, 'body.action', ['start', 'stop', 'restart', 'status'] as const),
   };
+}
+
+export interface IdentityChallengeRegisterBody {
+  wpUserId: number;
+  code: string;
+  expiresAt?: number;
+  webhookUrl: string;
+  webhookSecret: string;
+}
+
+export function validateIdentityChallengeRegisterBody(value: unknown): IdentityChallengeRegisterBody {
+  const record = expectRecord(value, 'body');
+  const webhookUrl = expectString(record.webhookUrl, 'body.webhookUrl', { min: 1, max: 1024 });
+  const parsed = safeParseUrl(webhookUrl);
+  if (parsed === undefined || (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') || parsed.hostname.length === 0) {
+    throw new ValidationError('body.webhookUrl must be a valid http(s) URL');
+  }
+  return {
+    wpUserId: expectNumber(record.wpUserId, 'body.wpUserId', { integer: true, min: 1 }),
+    code: expectString(record.code, 'body.code', { min: 6, max: 64, pattern: /^[A-Za-z0-9]+$/ }),
+    expiresAt: optionalNumber(record.expiresAt, 'body.expiresAt', { integer: true, min: 1 }),
+    webhookUrl,
+    webhookSecret: expectString(record.webhookSecret, 'body.webhookSecret', { min: 16, max: 1024 }),
+  };
+}
+
+function safeParseUrl(value: string): URL | undefined {
+  try {
+    return new URL(value);
+  } catch {
+    return undefined;
+  }
 }
 
 export function applyEnvOverrides(config: AppConfig): AppConfig {

@@ -8,6 +8,7 @@ import { runBackupCommand, runRestoreCommand } from './commands/backupCmd.ts';
 import { runConfigCommand } from './commands/configCmd.ts';
 import { runDoctorCommand } from './commands/doctor.ts';
 import { runInstallCommand } from './commands/install.ts';
+import { runIdentityCommand } from './commands/identity.ts';
 import { runLogsCommand } from './commands/logs.ts';
 import { runServiceCommand } from './commands/service.ts';
 import { runUpdateCommand } from './commands/update.ts';
@@ -25,6 +26,7 @@ Commands:
   version                     Show version and protocol information
   config <init|show|get|set|validate|path>
   api <enable|disable|status|pair|rotate-secret|unpair>
+  identity <challenge|worker|status>
   agent                       Run the agent HTTP API in the foreground
   doctor                      Run read-only health checks
   logs [--lines N]            Show recent TS3 logs (mock in development)
@@ -76,6 +78,9 @@ export async function main(argv: readonly string[]): Promise<number> {
         break;
       case 'doctor':
         await runDoctorCommand(ctx);
+        break;
+      case 'identity':
+        await runIdentityCommand(ctx, positionals.slice(1), flags);
         break;
       case 'logs':
         runLogsCommand(ctx, flags);

@@ -16,6 +16,7 @@ export interface Ts3Client {
   clientType: number;
   uniqueId?: string;
   away?: boolean;
+  awayMessage?: string;
 }
 
 export interface Ts3Channel {

@@ -60,6 +60,7 @@ TS3COPS-HMAC-SHA256 v1
 | POST | `/v1/agent/rotate-secret` | HMAC | `agent.rotate-secret` | 轮换 credential |
 | POST | `/v1/agent/unpair` | HMAC | `agent.unpair` | 吊销 credential |
 | POST | `/v1/agent/disable` | HMAC | `agent.api.disable` | 停止监听并吊销 |
+| POST | `/v1/identity/challenge` | HMAC | `identity.challenge.register` | 注册一次性身份绑定挑战（WP 发起） |
 
 路由表与代码一致性由 `test/routeTable.test.ts` 强制（`DOCUMENTED_ENDPOINTS`）。
 
@@ -110,6 +111,24 @@ TS3COPS-HMAC-SHA256 v1
 成功：`{ "ok": true, "data": { "nodeId": "...", "credential": "...", "protocolVersion": 1 } }`
 
 credential 只返回这一次。
+
+### POST /v1/identity/challenge
+
+```json
+{
+  "wpUserId": 42,
+  "code": "A1B2C3D4",
+  "expiresAt": 1735000000000,
+  "webhookUrl": "https://example.test/wp-json/ts3-operations/v1/identity/callback",
+  "webhookSecret": "long-random-secret"
+}
+```
+
+成功：`{ "ok": true, "data": { "ok": true, "expiresAt": 1735000000000 } }`。
+
+- 挑战码单次消费、10 分钟默认过期（可自定义 `expiresAt`）、尝试次数超限即锁定。
+- Agent 的 Challenge Verification Worker 轮询 TS3 在线客户端，在昵称（或
+  `away` 字段）中匹配验证码；成功后通过 HMAC 签名的 webhook 回调 WP。
 
 ## 5. Capability 模型
 

@@ -8,6 +8,7 @@ import { pairingMatches } from '../security/pairing.ts';
 import { TokenBucketLimiter } from '../security/rateLimit.ts';
 import { randomHex } from '../security/secrets.ts';
 import type { ServiceManager } from '../system/serviceManager.ts';
+import type { ChallengeStore } from '../identity/challengeStore.ts';
 import type { TeamSpeakClient } from '../ts3/teamSpeakClient.ts';
 import { capabilityForRoute } from './handlers.ts';
 import { findRoute } from './routeTable.ts';
@@ -23,6 +24,7 @@ interface AgentDependencies {
   ts3: TeamSpeakClient;
   services: ServiceManager;
   logger: Logger;
+  identityStore?: ChallengeStore;
 }
 
 export async function startAgentServer(
@@ -134,6 +136,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, ctx: Req
       services: ctx.services,
       state: ctx.state,
       route,
+      identityStore: ctx.identityStore,
     });
     sendJson(res, result.status, { ok: true, data: result.data });
     ctx.logger.info('request completed', { requestId, ip, method, path, status: result.status });

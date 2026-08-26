@@ -10,8 +10,8 @@
 | `composer install`（WP 插件开发依赖） | 通过（30 包） |
 | ESLint（ts3-manager src/test） | 通过，0 warning |
 | `tsc -p tsconfig.json`（strict，含测试） | 通过 |
-| `node --test`（ts3-manager） | 47/47 通过 |
-| PHPUnit（WP 插件） | 28 测试 / 80 断言通过 |
+| `node --test`（ts3-manager） | 62/62 通过 |
+| PHPUnit（WP 插件） | 39 测试 / 100 断言通过 |
 | PHP lint（全部 PHP 文件） | 33/33 通过 |
 | PHPCS（WordPress-Extra，含豁免项） | 通过 |
 | `tsc -p tsconfig.build.json`（dist 产物） | 通过，`dist/cli/index.js` 可运行 |
@@ -29,7 +29,8 @@
   `adopt`（只读分析）、`update`（源校验）。
 - Agent `/v1` API：health/info/status/clients/channels（list/create/edit/
   delete/move）/kick/ban/move/poke/system start/stop/restart/status/pair/
-  rotate-secret/unpair/disable；maintenance 三端点诚实返回 501。
+  rotate-secret/unpair/disable/identity challenge register；maintenance
+  三端点诚实返回 501。
 - 安全体系：HMAC-SHA256 v1（canonical string + 恒定时间比较）、timestamp 窗口、
   nonce 单次消费、token-bucket 限流、body 上限、无 CORS、错误 envelope、
   capability 模型（高风险能力默认不授予）、配对码一次性/15 分钟/哈希存储。
@@ -58,7 +59,9 @@
 - 前台：`[ts3_status]` 支持主题（auto/light/dark）、可折叠频道树、加入链接
   策略；Gutenberg Block 同步支持；全部数据经服务端 Transient 缓存。
 - 身份模块：Mapping 状态机（unbound/pending/verified/revoked）+ 一次性
-  Challenge（TTL、尝试上限、单次消费），Bot 验证通道为未来模块。
+  Challenge（TTL、尝试上限、单次消费）+ **自动化核验闭环**：Agent 轮询
+  TS3 客户端昵称匹配验证码 → HMAC webhook → WP `/identity/callback`
+  自动置 verified；前台 `[ts3_identity]` 支持用户自主发起绑定。
 - 审计日志：有界环形缓冲（500 条），不含凭据。
 
 ## 3. 目前仅为接口/测试桩的部分
@@ -70,7 +73,7 @@
 | ServerQuery 真实联调 | 需验证 | 协议契约测试已通过；与真实 TS3 的最终核对仍待 Docker/实机 |
 | install/update 执行管线 | 计划模式 | 需已验证官方源（URL+sha256）后实现下载/校验/替换/回滚 |
 | 服务器配置读写 | capability 已预留 | 尚未开放端点 |
-| 身份绑定 Bot 通道 / 加入链接生成 / 角色同步 | 设计+桩 | 需真实协议验证后实现 |
+| Bot 私聊验证通道 / away 字段 / 加入链接生成 / 角色同步 | 预留 | `identity.verify.field` 已支持 nickname；Bot 通道与角色同步后续实现 |
 | 多节点 | 单节点已实现 | 配置已按 Node 实体设计，扩展点明确 |
 | Gutenberg React 编辑器 UI | 基础动态块 | 标准 block 结构已建，完整 React UI 为后续 |
 

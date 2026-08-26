@@ -14,6 +14,7 @@ use Ts3Ops\Admin\Actions;
 use Ts3Ops\Admin\Assets;
 use Ts3Ops\Agent\Client;
 use Ts3Ops\Frontend\Block;
+use Ts3Ops\Frontend\IdentityShortcode;
 use Ts3Ops\Frontend\Shortcode;
 use Ts3Ops\Rest\Routes;
 use Ts3Ops\Services\StatusService;
@@ -46,6 +47,7 @@ final class Plugin {
 		$status     = new StatusService( $client, $repository );
 
 		Shortcode::init( $status );
+		IdentityShortcode::init();
 		Block::init( $status );
 		Routes::init( $client, $status, $repository );
 	}

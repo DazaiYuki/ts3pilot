@@ -132,10 +132,10 @@ function wp_json_encode( $value, int $flags = 0 ): string|false {
 }
 
 /**
- * @return array<string, string>|false
+ * @return array<string, string>|string|int|false|null
  */
-function wp_parse_url( string $url ) {
-	return parse_url( $url );
+function wp_parse_url( string $url, int $component = -1 ) {
+	return parse_url( $url, $component );
 }
 
 function wp_strip_all_tags( string $value ): string {
@@ -301,10 +301,21 @@ class WP_REST_Request {
 	private array $params = array();
 
 	/**
+	 * @var array<string, string>
+	 */
+	private array $headers = array();
+
+	private string $body = '';
+
+	/**
 	 * @param array<string, mixed> $params
 	 */
-	public function __construct( array $params = array() ) {
+	public function __construct( array $params = array(), array $headers = array(), string $body = '' ) {
 		$this->params = $params;
+		$this->body   = $body;
+		foreach ( $headers as $key => $value ) {
+			$this->headers[ strtolower( (string) $key ) ] = (string) $value;
+		}
 	}
 
 	/**
@@ -319,6 +330,22 @@ class WP_REST_Request {
 	 */
 	public function set_param( string $key, $value ): void {
 		$this->params[ $key ] = $value;
+	}
+
+	public function get_header( string $name ): ?string {
+		return $this->headers[ strtolower( $name ) ] ?? null;
+	}
+
+	public function set_header( string $name, string $value ): void {
+		$this->headers[ strtolower( $name ) ] = $value;
+	}
+
+	public function get_body(): string {
+		return $this->body;
+	}
+
+	public function set_body( string $body ): void {
+		$this->body = $body;
 	}
 }
 
@@ -374,4 +401,11 @@ function get_current_screen(): ?object {
 
 function rest_url( string $path = '' ): string {
 	return 'http://example.test/wp-json/' . $path;
+}
+
+/**
+ * @return object|false
+ */
+function get_userdata( int $user_id ) {
+	return $GLOBALS['__ts3cops_userdata'][ $user_id ] ?? false;
 }

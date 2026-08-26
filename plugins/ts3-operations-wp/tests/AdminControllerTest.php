@@ -11,6 +11,7 @@ namespace Ts3Ops\Tests;
 
 use PHPUnit\Framework\TestCase;
 use Ts3Ops\Agent\Client;
+use Ts3Ops\Agent\Protocol;
 use Ts3Ops\Capabilities;
 use Ts3Ops\Identity\Mapping;
 use Ts3Ops\Rest\AdminController;
@@ -25,6 +26,7 @@ final class AdminControllerTest extends TestCase {
 		$GLOBALS['__ts3cops_transients']       = array();
 		$GLOBALS['__ts3cops_http_queue']       = array();
 		$GLOBALS['__ts3cops_users']            = array();
+		$GLOBALS['__ts3cops_userdata']         = array();
 		$GLOBALS['__ts3cops_current_user_can'] = true;
 		$GLOBALS['__ts3cops_current_user']     = 1;
 		$repository                            = new Repository();
@@ -34,6 +36,10 @@ final class AdminControllerTest extends TestCase {
 				'agent_credential' => 'secret-credential',
 			)
 		);
+	}
+
+	protected function tearDown(): void {
+		unset( $_SERVER['REQUEST_URI'] );
 	}
 
 	private function controller(): AdminController {
@@ -210,5 +216,60 @@ final class AdminControllerTest extends TestCase {
 		$GLOBALS['__ts3cops_current_user_can'] = false;
 		$this->assertFalse( $controller->can_clients() );
 		$this->assertFalse( $controller->can_users() );
+	}
+
+	public function test_identity_me_challenge_creates_pending_mapping_and_registers(): void {
+		$GLOBALS['__ts3cops_current_user'] = 5;
+		$this->queue_success( array( 'ok' => true ) );
+		$response = $this->controller()->identity_me_challenge();
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertMatchesRegularExpression( '/^[A-F0-9]{8}$/', (string) $response->get_data()['code'] );
+		$this->assertSame( 'pending', Mapping::get( 5 )['status'] );
+	}
+
+	public function test_identity_me_returns_mapping(): void {
+		$GLOBALS['__ts3cops_current_user'] = 5;
+		$response                          = $this->controller()->identity_me();
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 'unbound', $response->get_data()['mapping']['status'] );
+	}
+
+	public function test_identity_callback_verifies_mapping(): void {
+		$GLOBALS['__ts3cops_userdata'][7] = (object) array( 'ID' => 7 );
+		Mapping::set( 7, array( 'status' => 'pending' ) );
+		$path                   = '/wp-json/ts3-operations/v1/identity/callback';
+		$body                   = wp_json_encode(
+			array(
+				'wpUserId'   => 7,
+				'ts3Uid'     => 'TS3UID123',
+				'verifiedAt' => 1700000000000,
+				'nodeId'     => 'node-1',
+			)
+		);
+		$headers                = Protocol::headers( 'secret-credential', 'POST', $path, $body );
+		$_SERVER['REQUEST_URI'] = $path;
+		$response               = $this->controller()->identity_callback( new WP_REST_Request( array(), $headers, $body ) );
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 'verified', Mapping::get( 7 )['status'] );
+		$this->assertSame( 'TS3UID123', Mapping::get( 7 )['ts3_uid'] );
+	}
+
+	public function test_identity_callback_rejects_bad_signature(): void {
+		$GLOBALS['__ts3cops_userdata'][7] = (object) array( 'ID' => 7 );
+		Mapping::set( 7, array( 'status' => 'pending' ) );
+		$path                   = '/wp-json/ts3-operations/v1/identity/callback';
+		$body                   = wp_json_encode(
+			array(
+				'wpUserId'   => 7,
+				'ts3Uid'     => 'TS3UID123',
+				'verifiedAt' => 1700000000000,
+				'nodeId'     => 'node-1',
+			)
+		);
+		$headers                = Protocol::headers( 'wrong-secret', 'POST', $path, $body );
+		$_SERVER['REQUEST_URI'] = $path;
+		$response               = $this->controller()->identity_callback( new WP_REST_Request( array(), $headers, $body ) );
+		$this->assertSame( 401, $response->get_status() );
+		$this->assertSame( 'pending', Mapping::get( 7 )['status'] );
 	}
 }

@@ -23,6 +23,7 @@ export const Capability = {
   AGENT_UNPAIR: 'agent.unpair',
   AGENT_ROTATE_SECRET: 'agent.rotate-secret',
   AGENT_API_DISABLE: 'agent.api.disable',
+  IDENTITY_CHALLENGE_REGISTER: 'identity.challenge.register',
 } as const;
 
 export type CapabilityValue = (typeof Capability)[keyof typeof Capability];

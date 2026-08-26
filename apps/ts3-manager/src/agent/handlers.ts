@@ -6,6 +6,7 @@ import {
   validateChannelDeleteBody,
   validateChannelEditBody,
   validateChannelMoveBody,
+  validateIdentityChallengeRegisterBody,
   validateBanBody,
   validateKickBody,
   validateMoveBody,
@@ -14,9 +15,10 @@ import {
   validateSystemActionBody,
   type AppConfig,
 } from '../domain/schemas.ts';
+import type { ChallengeStore } from '../identity/challengeStore.ts';
 import type { Logger } from '../logging/logger.ts';
-import { randomToken } from '../security/secrets.ts';
 import { pairingMatches } from '../security/pairing.ts';
+import { randomToken, sha256Hex } from '../security/secrets.ts';
 import type { ServiceManager } from '../system/serviceManager.ts';
 import type { TeamSpeakClient, Ts3FeatureValue } from '../ts3/teamSpeakClient.ts';
 import type { AgentState } from './state.ts';
@@ -31,6 +33,7 @@ export interface HandlerContext {
   services: ServiceManager;
   state: AgentState;
   route: RouteSpec;
+  identityStore: ChallengeStore | undefined;
 }
 
 export interface HandlerResult {
@@ -225,4 +228,23 @@ export function capabilityForRoute(route: RouteSpec, granted: readonly string[])
   if (route.capability !== undefined && !hasCapability(granted, route.capability)) {
     throw new AppError(ErrorCode.PERMISSION, `Capability required: ${route.capability}`, { httpStatus: 403 });
   }
+}
+
+export function identityChallengeRegisterHandler(ctx: HandlerContext): HandlerResult {
+  const body = validateIdentityChallengeRegisterBody(ctx.body);
+  if (ctx.identityStore === undefined) {
+    throw new AppError(ErrorCode.AGENT, 'Identity challenge store is not available', { httpStatus: 500 });
+  }
+  const expiresAt = body.expiresAt ?? Date.now() + 10 * 60 * 1000;
+  ctx.identityStore.register({
+    codeHash: sha256Hex(body.code),
+    wpUserId: body.wpUserId,
+    expiresAt,
+    attempts: 0,
+    consumed: false,
+    webhook: { url: body.webhookUrl, secret: body.webhookSecret },
+    delivered: false,
+  });
+  ctx.logger.info('identity challenge registered', { wpUserId: body.wpUserId, expiresAt });
+  return { status: 200, data: { ok: true, expiresAt } };
 }

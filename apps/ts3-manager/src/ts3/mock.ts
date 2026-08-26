@@ -15,7 +15,7 @@ import type {
 
 const INITIAL_CLIENTS: Ts3Client[] = [
   { clientId: 1, nickname: 'MockAlice', channelId: 1, clientType: 0, uniqueId: 'mockuid-alice', away: false },
-  { clientId: 2, nickname: 'MockBob', channelId: 1, clientType: 0, uniqueId: 'mockuid-bob', away: true },
+  { clientId: 2, nickname: 'MockBob', channelId: 1, clientType: 0, uniqueId: 'mockuid-bob', away: true, awayMessage: 'AFK - brb' },
   { clientId: 3, nickname: 'MockCarol', channelId: 2, clientType: 0, uniqueId: 'mockuid-carol', away: false },
   { clientId: 4, nickname: 'MockServerQuery', channelId: 0, clientType: 1, uniqueId: 'mockuid-query' },
 ];

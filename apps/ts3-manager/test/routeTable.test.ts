@@ -30,6 +30,7 @@ test('route table matches the documented API surface', () => {
       'POST /v1/agent/rotate-secret',
       'POST /v1/agent/unpair',
       'POST /v1/agent/disable',
+      'POST /v1/identity/challenge',
     ],
   );
 });

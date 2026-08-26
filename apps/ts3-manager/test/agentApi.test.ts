@@ -8,6 +8,7 @@ import { bodyHash, signRequest } from '../src/security/hmac.ts';
 import { createPairingState, generatePairingCode } from '../src/security/pairing.ts';
 import { MockServiceManager } from '../src/system/providers/mock.ts';
 import { MockTeamSpeakClient } from '../src/ts3/mock.ts';
+import { ChallengeStore } from '../src/identity/challengeStore.ts';
 import { cleanupDir, tempDir, writeTempConfig } from './util.ts';
 
 interface SignOptions {
@@ -297,4 +298,48 @@ test('disable revokes the credential', async () => {
       assert.equal(saved.agent.credential, '');
     },
   );
+});
+
+test('identity challenge register endpoint stores the challenge', async () => {
+  const dir = tempDir('agent-identity');
+  const { path } = writeTempConfig(dir, (config) => {
+    config.agent.enabled = true;
+    config.agent.credential = 'test-credential';
+    config.agent.host = '127.0.0.1';
+  });
+  const store = new ChallengeStore();
+  const handle = await startAgentServer(
+    path,
+    {
+      ts3: new MockTeamSpeakClient(),
+      services: new MockServiceManager(readConfigFile(path)),
+      logger: createLogger('error', false),
+      identityStore: store,
+    },
+    { listenPort: 0 },
+  );
+  try {
+    const body = JSON.stringify({
+      wpUserId: 42,
+      code: 'IDENT42',
+      webhookUrl: 'http://127.0.0.1:9/wp-json/ts3-operations/v1/identity/callback',
+      webhookSecret: 'webhook-secret-value',
+    });
+    const response = await request(handle, 'POST', '/v1/identity/challenge', body, signedHeaders('test-credential', 'POST', '/v1/identity/challenge', body));
+    assert.equal(response.status, 200);
+    assert.equal(store.list().length, 1);
+    assert.equal(store.list()[0]?.wpUserId, 42);
+
+    const denied = await request(
+      handle,
+      'POST',
+      '/v1/identity/challenge',
+      body,
+      signedHeaders('test-credential', 'POST', '/v1/identity/challenge', JSON.stringify({ ...JSON.parse(body) as object, wpUserId: 43 })),
+    );
+    assert.equal(denied.status, 401);
+  } finally {
+    await handle.close();
+    cleanupDir(dir);
+  }
 });
