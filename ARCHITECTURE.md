@@ -36,6 +36,9 @@
   唯一的进程执行入口 `processRunner.ts` 只接受固定参数数组，绝不使用 shell。
 - `src/ts3/` — `TeamSpeakClient` 接口 + `mock` / `webquery` / `serverquery`
   实现；WebQuery 端点映射在未对照官方文档验证前一律拒绝执行。
+  ServerQuery 拆分为纯协议层（命令组装/响应解析/通知分离）与长连接层
+  （banner/login/use 握手、串行命令队列、通知回调、重连骨架），并用
+  假 TCP Server 完成契约测试。
 - `src/agent/` — HTTP 服务器、路由表、HMAC 认证、能力守卫。
 - `src/services/` — 端口探测、日志读取、备份/恢复（含 manifest 与校验和）。
 
@@ -184,3 +187,6 @@ Agent 侧无需改动。来自 Agent 的请求必须验证 node 身份，不能�
 5. **TS3 Server 安装/更新执行管线暂不实现**：install 输出完整计划并校验
    `verified` 源；执行下载/替换需要对照官方文档验证源 URL 与校验和，列为
    下一里程碑，而不是伪造一个官方 URL。
+6. **ServerQuery 以契约测试先行**：握手、命令组装、响应解析、`notify*`
+   事件分发先用"说同一线格式的假 TCP Server"验证；SSH（10022）传输层涉及
+   完整 SSH 客户端实现，列为后续里程碑，不在本轮伪造。

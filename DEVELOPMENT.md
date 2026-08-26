@@ -38,6 +38,7 @@ npm 缓存默认放在工作区 `.npm-cache`（见 `.npmrc`），避免污染用
 | Agent API | 认证/重放/时间窗/篡改/能力/限流/配对/轮换/停用 | Windows（mock） |
 | 配置/校验 | schema、默认值、env 覆盖 | Node |
 | TS3 转义 | `\s \p \/ \\` 解析 | Node |
+| ServerQuery 协议契约 | 握手/命令/通知/登录失败（假 TCP Server） | Node |
 | 备份/恢复 | 往返、manifest 校验和、路径逃逸拒绝 | Node |
 | ServiceManager | mock 状态机 | Node |
 | WP 服务 | 状态投影/脱敏、离线降级 | PHPUnit（WP 桩） |

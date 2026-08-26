@@ -1,6 +1,17 @@
 import { AppError, ErrorCode } from '../domain/errors.ts';
 import type { Ts3Channel, Ts3Client, Ts3ServerStatus } from '../domain/models.ts';
-import type { BanInput, KickInput, MoveInput, PokeInput, TeamSpeakClient, Ts3FeatureValue } from './teamSpeakClient.ts';
+import type {
+  BanInput,
+  ChannelCreateInput,
+  ChannelDeleteInput,
+  ChannelEditInput,
+  ChannelMoveInput,
+  KickInput,
+  MoveInput,
+  PokeInput,
+  TeamSpeakClient,
+  Ts3FeatureValue,
+} from './teamSpeakClient.ts';
 
 const INITIAL_CLIENTS: Ts3Client[] = [
   { clientId: 1, nickname: 'MockAlice', channelId: 1, clientType: 0, uniqueId: 'mockuid-alice', away: false },
@@ -19,6 +30,10 @@ const SUPPORTED: readonly Ts3FeatureValue[] = [
   'status',
   'clients.list',
   'channels.list',
+  'channels.create',
+  'channels.edit',
+  'channels.delete',
+  'channels.move',
   'clients.kick',
   'clients.ban',
   'clients.move',
@@ -65,6 +80,42 @@ export class MockTeamSpeakClient implements TeamSpeakClient {
     }));
   }
 
+  async channelCreate(input: ChannelCreateInput): Promise<{ channelId: number }> {
+    const channelId = Math.max(0, ...this.channelList.map((channel) => channel.channelId)) + 1;
+    this.channelList.push({
+      channelId,
+      name: input.name,
+      parentId: input.parentId ?? 0,
+      order: input.order ?? 0,
+    });
+    return { channelId };
+  }
+
+  async channelEdit(input: ChannelEditInput): Promise<{ ok: true }> {
+    const channel = this.findChannel(input.channelId);
+    if (input.name !== undefined) channel.name = input.name;
+    if (input.topic !== undefined) channel.topic = input.topic;
+    return { ok: true };
+  }
+
+  async channelDelete(input: ChannelDeleteInput): Promise<{ ok: true }> {
+    const channel = this.findChannel(input.channelId);
+    this.channelList.splice(this.channelList.indexOf(channel), 1);
+    return { ok: true };
+  }
+
+  async channelMove(input: ChannelMoveInput): Promise<{ ok: true }> {
+    const channel = this.findChannel(input.channelId);
+    if (input.parentId !== undefined) {
+      if (!this.channelList.some((entry) => entry.channelId === input.parentId) && input.parentId !== 0) {
+        throw new AppError(ErrorCode.TS3, `Channel ${input.parentId} not found`);
+      }
+      channel.parentId = input.parentId;
+    }
+    if (input.order !== undefined) channel.order = input.order;
+    return { ok: true };
+  }
+
   async kickClient(input: KickInput): Promise<{ ok: true }> {
     const client = this.findClient(input.clientId);
     if (input.kickFrom === 'server') {
@@ -101,5 +152,13 @@ export class MockTeamSpeakClient implements TeamSpeakClient {
       throw new AppError(ErrorCode.TS3, `Client ${clientId} not found`);
     }
     return client;
+  }
+
+  private findChannel(channelId: number): Ts3Channel {
+    const channel = this.channelList.find((entry) => entry.channelId === channelId);
+    if (channel === undefined) {
+      throw new AppError(ErrorCode.TS3, `Channel ${channelId} not found`);
+    }
+    return channel;
   }
 }

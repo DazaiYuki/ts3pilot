@@ -215,6 +215,26 @@ test('maintenance endpoints report not-implemented honestly', async () => {
   );
 });
 
+test('channel create works through the API with the mock client', async () => {
+  await withServer(
+    tempDir('agent-channel'),
+    (config) => {
+      config.agent.credential = 'test-credential';
+    },
+    async (handle) => {
+      const body = JSON.stringify({ name: 'API Created Channel', parentId: 1 });
+      const create = await request(handle, 'POST', '/v1/ts3/channels/create', body, signedHeaders('test-credential', 'POST', '/v1/ts3/channels/create', body));
+      assert.equal(create.status, 200);
+      const createPayload = (await create.json()) as { data: { channelId: number } };
+      assert.ok(createPayload.data.channelId > 3);
+
+      const list = await request(handle, 'GET', '/v1/ts3/channels', '', signedHeaders('test-credential', 'GET', '/v1/ts3/channels', ''));
+      const listPayload = (await list.json()) as { data: Array<{ channelId: number; name: string }> };
+      assert.equal(listPayload.data.some((channel) => channel.channelId === createPayload.data.channelId && channel.name === 'API Created Channel'), true);
+    },
+  );
+});
+
 test('pairing flow issues a long-term credential and is single-use', async () => {
   const code = generatePairingCode();
   await withServer(

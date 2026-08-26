@@ -41,6 +41,10 @@ TS3COPS-HMAC-SHA256 v1
 | GET | `/v1/ts3/status` | HMAC | `ts3.status` | 服务器状态 |
 | GET | `/v1/ts3/clients` | HMAC | `ts3.clients.list` | 在线客户端列表 |
 | GET | `/v1/ts3/channels` | HMAC | `ts3.channels.list` | 频道树 |
+| POST | `/v1/ts3/channels/create` | HMAC | `ts3.channels.create` | 创建频道 |
+| POST | `/v1/ts3/channels/edit` | HMAC | `ts3.channels.edit` | 编辑频道 |
+| POST | `/v1/ts3/channels/delete` | HMAC | `ts3.channels.delete` | 删除频道 |
+| POST | `/v1/ts3/channels/move` | HMAC | `ts3.channels.move` | 移动频道 |
 | POST | `/v1/ts3/clients/kick` | HMAC | `ts3.clients.kick` | 踢出客户端 |
 | POST | `/v1/ts3/clients/ban` | HMAC | `ts3.clients.ban` | 封禁客户端 |
 | POST | `/v1/ts3/clients/move` | HMAC | `ts3.clients.move` | 移动客户端 |
@@ -68,6 +72,34 @@ TS3COPS-HMAC-SHA256 v1
 ```
 
 `kickFrom` ∈ {`channel`, `server`}。成功：`{ "ok": true }`。
+
+### POST /v1/ts3/channels/create
+
+```json
+{ "name": "New Lobby", "parentId": 1, "order": 5 }
+```
+
+成功：`{ "ok": true, "data": { "channelId": 10 } }`。
+
+### POST /v1/ts3/channels/edit
+
+```json
+{ "channelId": 10, "name": "Renamed", "topic": "hello" }
+```
+
+`name`/`topic`/`description` 均可选；至少提供一项。成功：`{ "ok": true }`。
+
+### POST /v1/ts3/channels/delete
+
+```json
+{ "channelId": 10, "force": true }
+```
+
+### POST /v1/ts3/channels/move
+
+```json
+{ "channelId": 10, "parentId": 2, "order": 1 }
+```
 
 ### POST /v1/agent/pair
 

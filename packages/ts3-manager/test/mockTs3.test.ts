@@ -27,6 +27,21 @@ test('mock TS3 client supports kick/move/ban/poke', async () => {
   await client.pokeClient({ clientId: 2, message: 'hello' });
 });
 
+test('mock TS3 client supports channel create/edit/delete/move', async () => {
+  const client = new MockTeamSpeakClient();
+  const created = await client.channelCreate({ name: 'New Lobby', parentId: 1, order: 5 });
+  assert.ok(created.channelId > 3);
+  await client.channelEdit({ channelId: created.channelId, name: 'Renamed', topic: 'hello' });
+  const channels = await client.channels();
+  const channel = channels.find((entry) => entry.channelId === created.channelId);
+  assert.equal(channel?.name, 'Renamed');
+  assert.equal(channel?.topic, 'hello');
+  await client.channelMove({ channelId: created.channelId, parentId: 2, order: 1 });
+  assert.equal((await client.channels()).find((entry) => entry.channelId === created.channelId)?.parentId, 2);
+  await client.channelDelete({ channelId: created.channelId });
+  assert.equal((await client.channels()).some((entry) => entry.channelId === created.channelId), false);
+});
+
 test('mock TS3 client rejects unknown clients', async () => {
   const client = new MockTeamSpeakClient();
   await assert.rejects(() => client.kickClient({ clientId: 999, kickFrom: 'server' }));

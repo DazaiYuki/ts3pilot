@@ -2,6 +2,10 @@ import { hasCapability } from '../domain/capabilities.ts';
 import { AppError, ErrorCode } from '../domain/errors.ts';
 import type { HealthInfo } from '../domain/models.ts';
 import {
+  validateChannelCreateBody,
+  validateChannelDeleteBody,
+  validateChannelEditBody,
+  validateChannelMoveBody,
   validateBanBody,
   validateKickBody,
   validateMoveBody,
@@ -87,6 +91,30 @@ export async function clientsHandler(ctx: HandlerContext): Promise<HandlerResult
 export async function channelsHandler(ctx: HandlerContext): Promise<HandlerResult> {
   requireFeature(ctx.ts3, 'channels.list');
   return { status: 200, data: await ctx.ts3.channels() };
+}
+
+export async function channelCreateHandler(ctx: HandlerContext): Promise<HandlerResult> {
+  requireFeature(ctx.ts3, 'channels.create');
+  const input = validateChannelCreateBody(ctx.body);
+  return { status: 200, data: await ctx.ts3.channelCreate(input) };
+}
+
+export async function channelEditHandler(ctx: HandlerContext): Promise<HandlerResult> {
+  requireFeature(ctx.ts3, 'channels.edit');
+  const input = validateChannelEditBody(ctx.body);
+  return { status: 200, data: await ctx.ts3.channelEdit(input) };
+}
+
+export async function channelDeleteHandler(ctx: HandlerContext): Promise<HandlerResult> {
+  requireFeature(ctx.ts3, 'channels.delete');
+  const input = validateChannelDeleteBody(ctx.body);
+  return { status: 200, data: await ctx.ts3.channelDelete(input) };
+}
+
+export async function channelMoveHandler(ctx: HandlerContext): Promise<HandlerResult> {
+  requireFeature(ctx.ts3, 'channels.move');
+  const input = validateChannelMoveBody(ctx.body);
+  return { status: 200, data: await ctx.ts3.channelMove(input) };
 }
 
 export async function kickHandler(ctx: HandlerContext): Promise<HandlerResult> {

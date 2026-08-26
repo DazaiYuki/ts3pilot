@@ -17,6 +17,7 @@
 | `tsc -p tsconfig.build.json`（dist 产物） | 通过，`dist/cli/index.js` 可运行 |
 | CLI 端到端冒烟 | config init / status(mock) / api enable / pair / doctor / logs / backup / restore(dry-run) / agent + /v1/health 全部通过 |
 | Agent API 安全测试 | 认证缺失/错误签名/时间窗/nonce 重放/body 篡改/能力拒绝/404/405/413/501/配对/轮换/停用 全部通过 |
+| ServerQuery 协议契约 | 假 TCP Server：握手/命令/通知/登录失败测试全部通过 |
 
 ## 2. 实际实现的功能（真实可运行）
 
@@ -26,16 +27,17 @@
   init/show/get/set/validate/path`、`api enable/disable/status/pair/rotate-secret/unpair`、
   `agent`、`doctor`、`logs`、`backup`、`restore`（dry-run 默认）、`install`（计划模式）、
   `adopt`（只读分析）、`update`（源校验）。
-- Agent `/v1` API：health/info/status/clients/channels/kick/ban/move/poke/
-  system start/stop/restart/status/pair/rotate-secret/unpair/disable；
-  maintenance 三端点诚实返回 501。
+- Agent `/v1` API：health/info/status/clients/channels（list/create/edit/
+  delete/move）/kick/ban/move/poke/system start/stop/restart/status/pair/
+  rotate-secret/unpair/disable；maintenance 三端点诚实返回 501。
 - 安全体系：HMAC-SHA256 v1（canonical string + 恒定时间比较）、timestamp 窗口、
   nonce 单次消费、token-bucket 限流、body 上限、无 CORS、错误 envelope、
   capability 模型（高风险能力默认不授予）、配对码一次性/15 分钟/哈希存储。
 - 系统抽象：`ServiceManager`（mock/systemd/script）+ 唯一安全进程执行器
   `processRunner`（参数数组，无 shell）；Windows 自动 mock。
 - TS3 抽象：`TeamSpeakClient`（mock/webquery/serverquery）；WebQuery 未验证
-  端点默认拒绝；ServerQuery 转义/解析工具已实现并有单测。
+  端点默认拒绝；ServerQuery 纯协议层 + 长连接层已实现，并用假 TCP Server
+  完成握手/命令/通知/登录失败契约测试。
 - 备份/恢复：目录复制 + manifest（sha256 校验和）+ 路径逃逸防护 +
   开发模式破坏性操作开关（`TS3_MANAGER_ALLOW_DESTRUCTIVE`）。
 
@@ -62,7 +64,7 @@
 | --- | --- | --- |
 | Agent maintenance update/backup/restore | 501 | CLI backup/restore 已真实可用；Agent 端点留待后续 |
 | WebQuery 真实请求 | 门控 | 端点映射需对照官方文档验证后打开 `verified=true` |
-| ServerQuery 真实联调 | 需验证 | 转义/解析已实现并单测，待真实 TS3 联调 |
+| ServerQuery 真实联调 | 需验证 | 协议契约测试已通过；与真实 TS3 的最终核对仍待 Docker/实机 |
 | install/update 执行管线 | 计划模式 | 需已验证官方源（URL+sha256）后实现下载/校验/替换/回滚 |
 | 频道创建/编辑/删除、服务器配置读写 | capability 已预留 | Mock 未实现对应动作，端点未开放 |
 | 身份绑定 Bot 通道 / 加入链接生成 / 角色同步 | 设计+桩 | 需真实协议验证后实现 |

@@ -2,6 +2,10 @@ import { Capability } from '../domain/capabilities.ts';
 import type { HandlerResult } from './handlers.ts';
 import {
   banHandler,
+  channelCreateHandler,
+  channelDeleteHandler,
+  channelEditHandler,
+  channelMoveHandler,
   channelsHandler,
   clientsHandler,
   disableHandler,
@@ -36,6 +40,10 @@ export const ROUTES: readonly RouteSpec[] = [
   { method: 'GET', path: '/v1/ts3/status', auth: 'hmac', capability: Capability.TS3_STATUS, handler: serverStatusHandler },
   { method: 'GET', path: '/v1/ts3/clients', auth: 'hmac', capability: Capability.TS3_CLIENTS_LIST, handler: clientsHandler },
   { method: 'GET', path: '/v1/ts3/channels', auth: 'hmac', capability: Capability.TS3_CHANNELS_LIST, handler: channelsHandler },
+  { method: 'POST', path: '/v1/ts3/channels/create', auth: 'hmac', capability: Capability.TS3_CHANNELS_CREATE, handler: channelCreateHandler },
+  { method: 'POST', path: '/v1/ts3/channels/edit', auth: 'hmac', capability: Capability.TS3_CHANNELS_EDIT, handler: channelEditHandler },
+  { method: 'POST', path: '/v1/ts3/channels/delete', auth: 'hmac', capability: Capability.TS3_CHANNELS_DELETE, handler: channelDeleteHandler },
+  { method: 'POST', path: '/v1/ts3/channels/move', auth: 'hmac', capability: Capability.TS3_CHANNELS_MOVE, handler: channelMoveHandler },
   { method: 'POST', path: '/v1/ts3/clients/kick', auth: 'hmac', capability: Capability.TS3_CLIENTS_KICK, handler: kickHandler },
   { method: 'POST', path: '/v1/ts3/clients/ban', auth: 'hmac', capability: Capability.TS3_CLIENTS_BAN, handler: banHandler },
   { method: 'POST', path: '/v1/ts3/clients/move', auth: 'hmac', capability: Capability.TS3_CLIENTS_MOVE, handler: moveHandler },

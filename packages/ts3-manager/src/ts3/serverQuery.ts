@@ -1,20 +1,48 @@
-import { createConnection, type Socket } from 'node:net';
 import { AppError, ErrorCode } from '../domain/errors.ts';
 import type { Ts3Channel, Ts3Client, Ts3ServerStatus } from '../domain/models.ts';
 import type { AppConfig } from '../domain/schemas.ts';
-import { escapeQueryValue, parseKeyValueLine, splitEntries, unescapeQueryValue } from './escape.ts';
-import type { BanInput, KickInput, MoveInput, PokeInput, TeamSpeakClient, Ts3FeatureValue } from './teamSpeakClient.ts';
+import { unescapeQueryValue } from './escape.ts';
+import { ServerQueryConnection } from './serverQueryConnection.ts';
+import { assertOk } from './serverQueryProtocol.ts';
+import type {
+  BanInput,
+  ChannelCreateInput,
+  ChannelDeleteInput,
+  ChannelEditInput,
+  ChannelMoveInput,
+  KickInput,
+  MoveInput,
+  PokeInput,
+  TeamSpeakClient,
+  Ts3FeatureValue,
+} from './teamSpeakClient.ts';
 
-const SUPPORTED: readonly Ts3FeatureValue[] = ['status', 'clients.list', 'channels.list', 'clients.kick', 'clients.ban', 'clients.move', 'clients.poke'];
+const SUPPORTED: readonly Ts3FeatureValue[] = [
+  'status',
+  'clients.list',
+  'channels.list',
+  'channels.create',
+  'channels.edit',
+  'channels.delete',
+  'channels.move',
+  'clients.kick',
+  'clients.ban',
+  'clients.move',
+  'clients.poke',
+];
 
-interface QueryResponse {
-  entries: Record<string, string>[];
-  error: Record<string, string>;
-}
-
+/**
+ * ServerQuery (TCP 10011) client.
+ *
+ * The command/response layer is contract-tested against a fake TCP server that
+ * speaks the same wire format; the exact escape/command semantics still need a
+ * final pass against a live TeamSpeak server (see sandbox/README.md).
+ */
 export class ServerQueryTeamSpeakClient implements TeamSpeakClient {
   readonly kind = 'serverquery' as const;
+
   private readonly config: AppConfig;
+  private connection: ServerQueryConnection | undefined;
 
   constructor(config: AppConfig) {
     this.config = config;
@@ -24,80 +52,24 @@ export class ServerQueryTeamSpeakClient implements TeamSpeakClient {
     return SUPPORTED.includes(feature);
   }
 
-  private async execute(command: string, parameters: Record<string, string | number> = {}): Promise<QueryResponse> {
-    const query = this.config.ts3.query;
-    if (query.username.length === 0 || query.password.length === 0) {
-      throw new AppError(ErrorCode.CONFIG, 'ServerQuery credentials (ts3.query.username/password) are not configured');
+  private async conn(): Promise<ServerQueryConnection> {
+    if (this.connection === undefined) {
+      const query = this.config.ts3.query;
+      if (query.username.length === 0 || query.password.length === 0) {
+        throw new AppError(ErrorCode.CONFIG, 'ServerQuery credentials (ts3.query.username/password) are not configured');
+      }
+      this.connection = new ServerQueryConnection({
+        host: '127.0.0.1',
+        port: query.rawPort,
+        username: query.username,
+        password: query.password,
+      });
     }
-    const paramText = Object.entries(parameters)
-      .map(([key, value]) => `${key}=${escapeQueryValue(String(value))}`)
-      .join(' ');
-    const fullCommand = `${command}${paramText.length > 0 ? ` ${paramText}` : ''}\n`;
-
-    return new Promise<QueryResponse>((resolve, reject) => {
-      const socket = createConnection({ host: '127.0.0.1', port: query.rawPort });
-      let buffer = '';
-      const lines: string[] = [];
-      let settled = false;
-
-      const timer = setTimeout(() => {
-        if (!settled) {
-          settled = true;
-          socket.destroy();
-          reject(new AppError(ErrorCode.NETWORK, 'ServerQuery timed out'));
-        }
-      }, 8000);
-
-      socket.on('connect', () => {
-        socket.write(`login client_login_name=${escapeQueryValue(query.username)} client_login_password=${escapeQueryValue(query.password)}\n`);
-      });
-      socket.on('data', (chunk: Buffer) => {
-        buffer += chunk.toString('utf8');
-        const newlineIndex = buffer.lastIndexOf('\n');
-        if (newlineIndex === -1) return;
-        const complete = buffer.slice(0, newlineIndex);
-        buffer = buffer.slice(newlineIndex + 1);
-        lines.push(...complete.split('\n').map((line) => line.trim()).filter((line) => line.length > 0));
-        this.processLines(lines, fullCommand, timer, socket, resolve, reject, () => {
-          settled = true;
-        });
-      });
-      socket.on('error', (error) => {
-        if (!settled) {
-          settled = true;
-          clearTimeout(timer);
-          reject(new AppError(ErrorCode.TS3, `ServerQuery connection error: ${error.message}`));
-        }
-      });
-    });
-  }
-
-  private processLines(
-    lines: string[],
-    _fullCommand: string,
-    timer: NodeJS.Timeout,
-    socket: Socket,
-    resolve: (value: QueryResponse) => void,
-    reject: (reason: unknown) => void,
-    markSettled: () => void,
-  ): void {
-    const errorIndex = lines.findIndex((line) => line.startsWith('error '));
-    if (errorIndex === -1) return;
-    clearTimeout(timer);
-    markSettled();
-    socket.end();
-
-    const error = parseKeyValueLine(lines[errorIndex] as string);
-    const entries = lines.slice(0, errorIndex).flatMap((line) => splitEntries(line).map((entry) => parseKeyValueLine(entry)));
-    if (error.id !== '0') {
-      reject(new AppError(ErrorCode.TS3, `ServerQuery error: ${unescapeQueryValue(error.msg ?? 'unknown')}`));
-      return;
-    }
-    resolve({ entries, error });
+    return this.connection;
   }
 
   async status(): Promise<Ts3ServerStatus> {
-    const response = await this.execute('serverinfo');
+    const response = assertOk(await (await this.conn()).command('serverinfo'));
     const first = response.entries[0] ?? {};
     return {
       online: true,
@@ -110,7 +82,7 @@ export class ServerQueryTeamSpeakClient implements TeamSpeakClient {
   }
 
   async clients(): Promise<Ts3Client[]> {
-    const response = await this.execute('clientlist');
+    const response = assertOk(await (await this.conn()).command('clientlist'));
     return response.entries.map((entry) => ({
       clientId: toNumber(entry.clid) ?? 0,
       nickname: unescapeQueryValue(entry.client_nickname ?? ''),
@@ -122,41 +94,87 @@ export class ServerQueryTeamSpeakClient implements TeamSpeakClient {
   }
 
   async channels(): Promise<Ts3Channel[]> {
-    const response = await this.execute('channellist');
+    const response = assertOk(await (await this.conn()).command('channellist'));
     return response.entries.map((entry) => ({
       channelId: toNumber(entry.cid) ?? 0,
       name: unescapeQueryValue(entry.channel_name ?? ''),
       parentId: toNumber(entry.pid) ?? 0,
       order: toNumber(entry.channel_order),
       totalClients: toNumber(entry.total_clients),
+      topic: entry.channel_topic !== undefined ? unescapeQueryValue(entry.channel_topic) : undefined,
     }));
   }
 
+  async channelCreate(input: ChannelCreateInput): Promise<{ channelId: number }> {
+    const response = assertOk(
+      await (await this.conn()).command('channelcreate', {
+        channel_name: input.name,
+        cpid: input.parentId ?? 0,
+        channel_order: input.order ?? 0,
+      }),
+    );
+    return { channelId: toNumber(response.entries[0]?.cid) ?? 0 };
+  }
+
+  async channelEdit(input: ChannelEditInput): Promise<{ ok: true }> {
+    const params: Record<string, string | number> = { cid: input.channelId };
+    if (input.name !== undefined) params.channel_name = input.name;
+    if (input.topic !== undefined) params.channel_topic = input.topic;
+    if (input.description !== undefined) params.channel_description = input.description;
+    assertOk(await (await this.conn()).command('channeledit', params));
+    return { ok: true };
+  }
+
+  async channelDelete(input: ChannelDeleteInput): Promise<{ ok: true }> {
+    assertOk(
+      await (await this.conn()).command('channeldelete', {
+        cid: input.channelId,
+        force: input.force ?? false,
+      }),
+    );
+    return { ok: true };
+  }
+
+  async channelMove(input: ChannelMoveInput): Promise<{ ok: true }> {
+    assertOk(
+      await (await this.conn()).command('channelmove', {
+        cid: input.channelId,
+        cpid: input.parentId ?? 0,
+        order: input.order ?? 0,
+      }),
+    );
+    return { ok: true };
+  }
+
   async kickClient(input: KickInput): Promise<{ ok: true }> {
-    await this.execute('clientkick', {
-      clid: input.clientId,
-      reasonid: input.kickFrom === 'server' ? 5 : 4,
-      reasonmsg: input.reason ?? '',
-    });
+    assertOk(
+      await (await this.conn()).command('clientkick', {
+        clid: input.clientId,
+        reasonid: input.kickFrom === 'server' ? 5 : 4,
+        reasonmsg: input.reason ?? '',
+      }),
+    );
     return { ok: true };
   }
 
   async banClient(input: BanInput): Promise<{ ok: true }> {
-    await this.execute('banclient', {
-      clid: input.clientId,
-      banreason: input.reason ?? '',
-      time: input.timeSeconds ?? 0,
-    });
+    assertOk(
+      await (await this.conn()).command('banclient', {
+        clid: input.clientId,
+        banreason: input.reason ?? '',
+        time: input.timeSeconds ?? 0,
+      }),
+    );
     return { ok: true };
   }
 
   async moveClient(input: MoveInput): Promise<{ ok: true }> {
-    await this.execute('clientmove', { clid: input.clientId, cid: input.channelId });
+    assertOk(await (await this.conn()).command('clientmove', { clid: input.clientId, cid: input.channelId }));
     return { ok: true };
   }
 
   async pokeClient(input: PokeInput): Promise<{ ok: true }> {
-    await this.execute('clientpoke', { clid: input.clientId, msg: input.message });
+    assertOk(await (await this.conn()).command('clientpoke', { clid: input.clientId, msg: input.message }));
     return { ok: true };
   }
 }

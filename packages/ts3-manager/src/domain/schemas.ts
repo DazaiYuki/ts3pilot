@@ -8,6 +8,7 @@ import {
   expectRecord,
   expectString,
   expectStringArray,
+  optionalBoolean,
   optionalNumber,
   optionalString,
 } from './validate.ts';
@@ -293,6 +294,66 @@ export function validatePokeBody(value: unknown): PokeBody {
   return {
     clientId: expectNumber(record.clientId, 'body.clientId', { integer: true, min: 1 }),
     message: expectString(record.message, 'body.message', { min: 1, max: 512 }),
+  };
+}
+
+export interface ChannelCreateBody {
+  name: string;
+  parentId?: number;
+  order?: number;
+}
+
+export function validateChannelCreateBody(value: unknown): ChannelCreateBody {
+  const record = expectRecord(value, 'body');
+  return {
+    name: expectString(record.name, 'body.name', { min: 1, max: 100 }),
+    parentId: optionalNumber(record.parentId, 'body.parentId', { integer: true, min: 0 }),
+    order: optionalNumber(record.order, 'body.order', { integer: true, min: 0, max: 100000 }),
+  };
+}
+
+export interface ChannelEditBody {
+  channelId: number;
+  name?: string;
+  topic?: string;
+  description?: string;
+}
+
+export function validateChannelEditBody(value: unknown): ChannelEditBody {
+  const record = expectRecord(value, 'body');
+  return {
+    channelId: expectNumber(record.channelId, 'body.channelId', { integer: true, min: 1 }),
+    name: optionalString(record.name, 'body.name', { min: 1, max: 100 }),
+    topic: optionalString(record.topic, 'body.topic', { max: 255 }),
+    description: optionalString(record.description, 'body.description', { max: 8192 }),
+  };
+}
+
+export interface ChannelDeleteBody {
+  channelId: number;
+  force?: boolean;
+}
+
+export function validateChannelDeleteBody(value: unknown): ChannelDeleteBody {
+  const record = expectRecord(value, 'body');
+  return {
+    channelId: expectNumber(record.channelId, 'body.channelId', { integer: true, min: 1 }),
+    force: optionalBoolean(record.force, 'body.force'),
+  };
+}
+
+export interface ChannelMoveBody {
+  channelId: number;
+  parentId?: number;
+  order?: number;
+}
+
+export function validateChannelMoveBody(value: unknown): ChannelMoveBody {
+  const record = expectRecord(value, 'body');
+  return {
+    channelId: expectNumber(record.channelId, 'body.channelId', { integer: true, min: 1 }),
+    parentId: optionalNumber(record.parentId, 'body.parentId', { integer: true, min: 0 }),
+    order: optionalNumber(record.order, 'body.order', { integer: true, min: 0, max: 100000 }),
   };
 }
 

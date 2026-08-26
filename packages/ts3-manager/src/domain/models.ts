@@ -24,6 +24,7 @@ export interface Ts3Channel {
   parentId: number;
   order?: number;
   totalClients?: number;
+  topic?: string;
 }
 
 export type ServiceState = 'running' | 'stopped' | 'starting' | 'stopping' | 'unknown';
