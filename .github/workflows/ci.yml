@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify (node ${{ matrix.node }} / php ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+        php: ['8.1', '8.2', '8.3']
+    env:
+      # Node 22 runs the TypeScript sources with the experimental type stripper;
+      # Node 24 enables it by default.
+      NODE_OPTIONS: ${{ matrix.node == 22 && '--experimental-strip-types' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: zip
+          coverage: none
+      - name: Install npm dependencies
+        run: npm ci
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --no-progress --working-dir=plugins/ts3-operations-wp
+      - name: Run full verification (lint, typecheck, tests, build, phpcs)
+        run: npm run verify
+
+  node20-static:
+    # Full `node --test` on .ts sources requires Node >= 22.6 (type stripping).
+    # Node 20 still gets static checks (ESLint, tsc, build) plus the PHP suite.
+    name: node 20 static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: zip
+          coverage: none
+      - run: npm ci
+      - run: composer install --no-interaction --no-progress --working-dir=plugins/ts3-operations-wp
+      - name: Lint and typecheck
+        run: npm run lint && npm run typecheck && npm run build
+      - name: PHP suite
+        run: composer test --working-dir=plugins/ts3-operations-wp
+
+  windows-verify:
+    name: verify on windows (node 24 / php 8.3)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: zip
+          coverage: none
+      - name: Install npm dependencies
+        run: npm ci
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --no-progress --working-dir=plugins/ts3-operations-wp
+      - name: Run full verification
+        run: npm run verify
+
+  release:
+    name: release packaging
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Build release artifacts
+        run: npm run release
+      - name: Validate artifacts
+        run: |
+          test -f dist/release/ts3-manager-v*.tar.gz
+          test -f dist/release/ts3-operations-wp-v*.zip
+          echo "--- CLI tarball (first entries) ---"
+          tar -tzf dist/release/ts3-manager-v*.tar.gz | head -n 5
+          echo "--- WP zip (entry count) ---"
+          unzip -l dist/release/ts3-operations-wp-v*.zip | tail -n 2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ts3cops-release
+          path: |
+            dist/release/*.tar.gz
+            dist/release/*.zip
+          if-no-files-found: error

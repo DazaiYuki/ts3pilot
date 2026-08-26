@@ -10,7 +10,7 @@
 | `composer install`（WP 插件开发依赖） | 通过（30 包） |
 | ESLint（ts3-manager src/test） | 通过，0 warning |
 | `tsc -p tsconfig.json`（strict，含测试） | 通过 |
-| `node --test`（ts3-manager） | 77/77 通过 |
+| `node --test`（ts3-manager） | 78/78 通过 |
 | PHPUnit（WP 插件） | 44 测试 / 117 断言通过 |
 | PHP lint（全部 PHP 文件） | 33/33 通过 |
 | PHPCS（WordPress-Extra，含豁免项） | 通过 |
@@ -68,6 +68,13 @@
   `dist/release/ts3-manager-v0.1.0.tar.gz`（编译产物 + config.example +
   README/LICENSE）与 `dist/release/ts3-operations-wp-v0.1.0.zip`
   （标准 WP 插件目录结构，剔除 tests/vendor/锁文件）。
+- CI（本轮）：`.github/workflows/ci.yml` — Node 22/24 × PHP 8.1/8.2/8.3
+  矩阵跑 `npm run verify`；Node 20 跑静态检查（原生 TS 直跑需 22.6+）；
+  Windows 节点 24 全量校验；release job 打包并校验产物后上传 artifact。
+- 流式备份（本轮）：`readTarGz` 重构为大文件直通流式（不再把整个文件条目
+  Buffer.concat 进内存），5MB 大文件契约测试验证多分块流式读取与字节级
+  往返；数百 MB files 目录不再有 OOM 风险。
+- 发布文档（本轮）：`CHANGELOG.md` 与 `docs/release-notes-v0.1.0.md`。
 
 ### ts3-operations-wp（WP 插件，`plugins/ts3-operations-wp`）
 

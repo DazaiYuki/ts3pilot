@@ -197,7 +197,7 @@ interface TarFileEntryInfo {
  * one at a time through a single PassThrough stream; the entry's SHA-256 is
  * computed while streaming and exposed after `onFile` resolves.
  */
-async function readTarGz(
+export async function readTarGz(
   archivePath: string,
   onFile: (entry: TarFileEntryInfo, content: PassThrough) => Promise<void>,
   onUnsupported?: (name: string, type: string) => void,
@@ -219,7 +219,39 @@ async function readTarGz(
     | undefined;
 
   for await (const chunk of source) {
-    pending = Buffer.concat([pending, chunk as Buffer]);
+    // Stream file data directly out of the incoming chunk: large entries (e.g.
+    // a multi-hundred-MB files/ directory) never accumulate in `pending`, so
+    // memory stays bounded regardless of entry size.
+    if (current !== undefined && current.remaining > 0) {
+      const chunkBuffer = chunk as Buffer;
+      const take = Math.min(current.remaining, chunkBuffer.length);
+      if (take > 0) {
+        const data = chunkBuffer.subarray(0, take);
+        current.hash.update(data);
+        if (current.pass !== undefined) current.pass.write(data);
+        current.remaining -= take;
+      }
+      if (current.remaining === 0) {
+        const padding = (TAR_BLOCK - (current.size % TAR_BLOCK)) % TAR_BLOCK;
+        const rest = chunkBuffer.subarray(take);
+        if (rest.length < padding) {
+          pending = Buffer.concat([pending, rest]);
+        } else {
+          pending = Buffer.concat([pending, rest.subarray(padding)]);
+        }
+        if (current.pass !== undefined) {
+          current.pass.end();
+          current.sha256 = current.hash.digest('hex');
+          if (current.onFileDone !== undefined) await current.onFileDone;
+        }
+        current = undefined;
+      } else {
+        continue;
+      }
+    } else {
+      pending = Buffer.concat([pending, chunk as Buffer]);
+    }
+
     while (true) {
       if (current === undefined) {
         if (pending.length < TAR_BLOCK) break;

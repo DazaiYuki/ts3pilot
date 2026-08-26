@@ -7,6 +7,7 @@ import {
   createBackupArchive,
   inspectBackupArchive,
   isUnsafeTarPath,
+  readTarGz,
   restoreBackupArchive,
 } from '../src/system/backupEngine.ts';
 import { cleanupDir, tempDir } from './util.ts';
@@ -216,4 +217,45 @@ test('isUnsafeTarPath rejects traversal and absolute names', () => {
   assert.equal(isUnsafeTarPath('/etc/passwd'), true);
   assert.equal(isUnsafeTarPath('C:\\windows'), true);
   assert.equal(isUnsafeTarPath('a//b'), true);
+});
+
+test('backup engine streams large files instead of buffering them whole', async () => {
+  const dir = tempDir('engine-stream');
+  try {
+    const root = join(dir, 'ts3');
+    mkdirSync(join(root, 'files'), { recursive: true });
+    const big = Buffer.alloc(5 * 1024 * 1024);
+    for (let i = 0; i < big.length; i += 4096) {
+      big.writeUInt32BE((i * 2654435761) >>> 0, i);
+    }
+    writeFileSync(join(root, 'files', 'big.bin'), big);
+    const archive = join(dir, 'backup.tar.gz');
+    await createBackupArchive({ rootDir: root, include: ['files'], archivePath: archive });
+
+    let dataEvents = 0;
+    await readTarGz(archive, async (entry, content) => {
+      let count = 0;
+      content.on('data', () => {
+        count += 1;
+      });
+      for await (const chunk of content) {
+        void chunk;
+      }
+      if (entry.name === 'files/big.bin') dataEvents = count;
+    });
+    assert.ok(dataEvents > 1, `expected streamed chunks, got ${dataEvents}`);
+
+    const target = join(root, 'restore-out');
+    mkdirSync(target, { recursive: true });
+    const result = await restoreBackupArchive({
+      archivePath: archive,
+      targetRoot: target,
+      allowedRoot: root,
+      force: true,
+    });
+    assert.equal(result.ok, true);
+    assert.deepEqual([...readFileSync(join(target, 'files', 'big.bin'))], [...big]);
+  } finally {
+    cleanupDir(dir);
+  }
 });
