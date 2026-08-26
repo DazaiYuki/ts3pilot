@@ -26,7 +26,7 @@
 
 ## 2. 组件边界
 
-### 2.1 ts3-manager（`packages/ts3-manager`）
+### 2.1 ts3-manager（CLI/Agent，`apps/ts3-manager`）
 
 - `src/cli/` — 命令解析与分发（无第三方依赖）。
 - `src/domain/` — 错误码、动作枚举、Capability 常量、领域模型、运行时 schema 校验。
@@ -42,7 +42,7 @@
 - `src/agent/` — HTTP 服务器、路由表、HMAC 认证、能力守卫。
 - `src/services/` — 端口探测、日志读取、备份/恢复（含 manifest 与校验和）。
 
-### 2.2 ts3-operations-wp（`packages/ts3-operations-wp`）
+### 2.2 ts3-operations-wp（WP 插件，`plugins/ts3-operations-wp`）
 
 - `src/Agent/` — PHP HMAC 协议镜像 + WordPress HTTP API 客户端 + 配对。
 - `src/Rest/` — REST 路由，全部带 `permission_callback`。

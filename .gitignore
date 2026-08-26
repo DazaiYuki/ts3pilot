@@ -10,7 +10,7 @@ tmp/
 *.tmp
 .DS_Store
 Thumbs.db
-packages/ts3-operations-wp/vendor/
-packages/ts3-operations-wp/.phpunit.result.cache
-packages/ts3-manager/*.tsbuildinfo
-packages/ts3-operations-wp/build/
+plugins/ts3-operations-wp/vendor/
+plugins/ts3-operations-wp/.phpunit.result.cache
+apps/ts3-manager/*.tsbuildinfo
+plugins/ts3-operations-wp/build/

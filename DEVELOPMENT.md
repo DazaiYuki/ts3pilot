@@ -12,7 +12,7 @@
 
 ```powershell
 npm install
-composer install --working-dir=packages/ts3-operations-wp
+composer install --working-dir=plugins/ts3-operations-wp
 ```
 
 npm 缓存默认放在工作区 `.npm-cache`（见 `.npmrc`），避免污染用户目录。
@@ -25,10 +25,10 @@ npm 缓存默认放在工作区 `.npm-cache`（见 `.npmrc`），避免污染用
 | `npm run lint` | ESLint（ts3-manager） |
 | `npm run typecheck` | tsc strict（含测试） |
 | `npm test` | Node 测试 + PHPUnit |
-| `npm run build` | tsc 编译到 `packages/ts3-manager/dist` |
+| `npm run build` | tsc 编译到 `apps/ts3-manager/dist` |
 | `npm run cli -- <cmd>` | 直接运行 CLI（源码模式） |
-| `composer test --working-dir=packages/ts3-operations-wp` | PHPUnit |
-| `composer phpcs --working-dir=packages/ts3-operations-wp` | PHPCS |
+| `composer test --working-dir=plugins/ts3-operations-wp` | PHPUnit |
+| `composer phpcs --working-dir=plugins/ts3-operations-wp` | PHPCS |
 
 ## 4. 测试矩阵
 

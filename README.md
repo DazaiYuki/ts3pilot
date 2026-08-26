@@ -12,8 +12,8 @@ CLI/Agent 独立可用，WordPress 插件是可选的 Web 控制平面，两者�
 
 | 组件 | 目录 | 说明 |
 | --- | --- | --- |
-| ts3-manager | `packages/ts3-manager` | TypeScript CLI + Agent（Host Control Plane），零运行时依赖 |
-| ts3-operations-wp | `packages/ts3-operations-wp` | WordPress 插件（可选 Web Control Plane） |
+| ts3-manager（CLI/Agent） | `apps/ts3-manager` | TypeScript CLI + Agent（Host Control Plane），零运行时依赖 |
+| ts3-operations-wp（WP 插件） | `plugins/ts3-operations-wp` | WordPress 插件（可选 Web Control Plane） |
 | 沙盒/文档 | `sandbox/`、`docs/` | Docker 集成测试入口与架构/安全/API 文档 |
 
 ## 核心设计

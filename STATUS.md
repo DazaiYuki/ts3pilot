@@ -21,7 +21,7 @@
 
 ## 2. 实际实现的功能（真实可运行）
 
-### ts3-manager（`packages/ts3-manager`）
+### ts3-manager（CLI/Agent，`apps/ts3-manager`）
 
 - CLI：`start`、`stop`、`restart`、`status`、`version`、`config
   init/show/get/set/validate/path`、`api enable/disable/status/pair/rotate-secret/unpair`、
@@ -41,7 +41,7 @@
 - 备份/恢复：目录复制 + manifest（sha256 校验和）+ 路径逃逸防护 +
   开发模式破坏性操作开关（`TS3_MANAGER_ALLOW_DESTRUCTIVE`）。
 
-### ts3-operations-wp（`packages/ts3-operations-wp`）
+### ts3-operations-wp（WP 插件，`plugins/ts3-operations-wp`）
 
 - 插件主文件、激活/停用/卸载语义（卸载按设置决定是否删数据）。
 - `manage_ts3_*` 六项 capability，激活时默认授予 administrator。

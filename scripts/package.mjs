@@ -2,7 +2,7 @@ import { cpSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 
 import { join } from 'node:path';
 
 const root = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
-const pkgDir = join(root, 'packages', 'ts3-manager');
+const pkgDir = join(root, 'apps', 'ts3-manager');
 const out = join(root, 'dist', 'ts3-manager-pkg');
 
 rmSync(out, { recursive: true, force: true });

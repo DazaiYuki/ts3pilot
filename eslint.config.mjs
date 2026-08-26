@@ -9,7 +9,7 @@ export default tseslint.config(
       '**/vendor/**',
       '**/.npm-cache/**',
       'tmp/**',
-      'packages/ts3-operations-wp/build/**',
+      'plugins/ts3-operations-wp/build/**',
     ],
   },
   js.configs.recommended,
