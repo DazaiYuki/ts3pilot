@@ -1,5 +1,8 @@
 # TS3 Community Operations Suite（TS3 社区运营套件）
 
+A decoupled, secure TeamSpeak 3 management suite with an independent CLI/Agent
+host control plane and optional WordPress integration.
+
 一套本地优先（local-first）的 TeamSpeak 3 服务器运维工具链：`ts3-manager`
 CLI/Agent 独立可用，WordPress 插件是可选的 Web 控制平面，两者通过受控的
 `/v1` Agent API 解耦协作。
@@ -62,3 +65,14 @@ TS3 连接默认使用 **Mock TeamSpeak 客户端**（数据字段完整、可�
 
 本项目代码：Apache-2.0（见 [LICENSE](LICENSE)）。第三方依赖与 TeamSpeak
 许可边界见 [NOTICE.md](NOTICE.md)。
+
+## Authors & Credits
+
+- **Architecture & Maintainer:** dazaiyuki
+- **AI Pairing Engineer:** DeepSeek-V4-Flash (via OpenAI Codex CLI)
+
+Commit trailer convention used in this repository:
+
+```text
+Co-authored-by: DeepSeek-V4-Flash <noreply@deepseek.com>
+```
