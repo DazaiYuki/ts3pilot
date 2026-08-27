@@ -1,0 +1,17 @@
+# Normalize line endings: store as LF, check out as LF on every platform.
+# The WordPress coding standard (PHPCS) and shellcheck both require LF.
+* text=auto
+
+*.php text eol=lf
+*.ts text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+*.txt text eol=lf
+*.css text eol=lf
+*.xml text eol=lf
+*.lock text eol=lf

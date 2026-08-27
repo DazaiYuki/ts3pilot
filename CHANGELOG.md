@@ -20,6 +20,8 @@ All notable changes to TS3 Community Operations Suite are documented here.
 - Releases: CI creates a GitHub Release with assets when a `v*` tag is pushed.
 - CI hardening: `scripts/install.sh` passes shellcheck (preinstalled on the
   runner); Windows verify split into granular steps for faster diagnosis.
+- Line endings: added `.gitattributes` (`eol=lf`) so PHPCS/shellcheck stay
+  green on Windows checkouts (CRLF was breaking WordPress line-ending rules).
 
 ## [0.1.0] - 2026-08-26
 

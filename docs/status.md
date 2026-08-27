@@ -56,7 +56,8 @@
 - CI 修复（本轮）：矩阵内改用 `composer update` 按 PHP 版本解析依赖
   （8.1→PHPUnit 10、8.2→11、8.3+→12），修复 PHP 8.1/8.2 因
   composer.lock 锁定 PHPUnit 12 导致的安装失败；新增 install.sh
-  shellcheck job；Windows 校验拆分为细粒度步骤便于定位。
+  shellcheck job；Windows 校验拆分为细粒度步骤便于定位；新增
+  `.gitattributes`（eol=lf）修复 Windows 检出 CRLF 导致的 PHPCS 报错。
 - 运维底座：`system/backupEngine.ts` 真实 tar.gz 归档（ustar +
   gzip，零依赖）与恢复引擎（manifest 校验、dry-run 预检、路径沙箱、
   拒绝 `..`/绝对路径/符号链接）；`system/systemdGenerator.ts` 生成
