@@ -5,8 +5,15 @@ import { join } from 'node:path';
 const root = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const pkgDir = join(root, 'apps', 'ts3-manager');
 const out = join(pkgDir, 'dist', 'pkg', 'ts3pilot-linux-x64');
-const pkgBin = join(pkgDir, 'node_modules', '.bin', process.platform === 'win32' ? 'pkg.cmd' : 'pkg');
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const pkgBinName = process.platform === 'win32' ? 'pkg.cmd' : 'pkg';
+// npm workspaces hoist binaries to the repository root node_modules/.bin.
+const pkgBin =
+  [join(root, 'node_modules', '.bin', pkgBinName), join(pkgDir, 'node_modules', '.bin', pkgBinName)].find((path) => existsSync(path)) ?? '';
+if (pkgBin.length === 0) {
+  console.error('bundle: pkg binary not found; run `npm install` in the repository root first');
+  process.exit(1);
+}
 
 // Static (musl) targets have no host glibc/libstdc++ dependency, which is the
 // only way to keep the binary runnable on RHEL8-likes (glibc 2.28) when the
