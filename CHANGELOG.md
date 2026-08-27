@@ -33,6 +33,9 @@ All notable changes to TS3 Community Operations Suite are documented here.
   `pkg` (`ts3pilot-linux-x64-v*.tar.gz` containing the single `ts3pilot`
   executable + `config.example.json`); production servers need no Node.js and
   the installer never touches system packages.
+- Compatibility: release builds now run on `ubuntu-22.04` and target
+  `node18-linuxstatic-x64` (fully static binary, no host glibc/libstdc++
+  dependency), fixing `GLIBC_2.38` / `GLIBCXX_3.4.30` errors on CentOS 7/8.
 
 ## [0.1.0] - 2026-08-26
 

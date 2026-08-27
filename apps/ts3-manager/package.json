@@ -13,7 +13,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "bundle": "npm run build && pkg . --targets node20-linux-x64 --output dist/pkg/ts3pilot-linux-x64",
+    "bundle": "npm run build && pkg . --targets node18-linuxstatic-x64 --output dist/pkg/ts3pilot-linux-x64",
     "typecheck": "tsc -p tsconfig.json",
     "test": "node --test \"test/**/*.test.ts\"",
     "lint": "eslint src test --max-warnings 0"
@@ -30,7 +30,7 @@
     "scripts": [],
     "assets": [],
     "targets": [
-      "node20-linux-x64"
+      "node18-linuxstatic-x64"
     ]
   }
 }

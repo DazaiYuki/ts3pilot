@@ -121,7 +121,9 @@ jobs:
   release:
     name: release packaging
     needs: verify
-    runs-on: ubuntu-latest
+    # Older runner => older build-time glibc baseline. Combined with the
+    # node18-linuxstatic-x64 pkg target, the produced binary runs on CentOS 7/8.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -152,7 +154,7 @@ jobs:
     name: github release (tags)
     if: startsWith(github.ref, 'refs/tags/v')
     needs: verify
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
