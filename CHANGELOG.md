@@ -39,6 +39,15 @@ All notable changes to TS3 Community Operations Suite are documented here.
   same baseline as CentOS Stream 9) as a hard gate, so a build that still
   requires newer glibc cannot be published. Fixes `GLIBC_2.38` /
   `GLIBCXX_3.4.30` errors on RHEL9 / CentOS Stream 9.
+- Self-update: `ts3pilot update [check|self]` checks the GitHub latest release,
+  supports the ghproxy mirror (`--mirror` default / `--no-mirror`), downloads
+  to /tmp, and replaces the running binary atomically (rm then move, avoiding
+  "Text file busy"); wired into the interactive TUI as menu item 7.
+- Adopt: `ts3server_linux_amd64` removed from detection; `ts3server.ini`,
+  `licensekey.dat`, `.ts3server.license` are now optional (no false warnings).
+- TUI: de-styled to `=== TS3Pilot 控制台 ===` with pure-Chinese `zh` menu;
+  added menu item 8 (autostart/systemd generation) and item 9 (switch language
+  with persistence).
 
 ## [0.1.0] - 2026-08-26
 

@@ -49,6 +49,14 @@
   10080/10443）、安装后自动生成加固 systemd unit；Windows/开发模式走
   Mock（只打印步骤并写 EULA 标记），并有参数校验/URL/Mock/防火墙/校验和
   契约测试。
+- 自更新（本轮）：`ts3pilot update [check|self]` — GitHub latest 版本对比、
+  ghproxy 镜像加速（默认开，`--no-mirror` 关闭）、/tmp 下载解压、
+  rm→move 原子替换（避免 Text file busy）、绿色成功提示；已接入 TUI
+  菜单 [7]。
+- Adopt 修正：移除 `ts3server_linux_amd64` 检测；`ts3server.ini`、
+  `licensekey.dat`、`.ts3server.license` 改为可选（不再误报）。
+- TUI 重构：标题改为 `=== TS3Pilot 控制台 ===`，zh 菜单纯中文；新增
+  [8] 配置开机自启与守护进程（systemd 生成）、[9] 更改控制台语言（持久化）。
 - 分发（本轮）：`scripts/install.sh` 一键安装脚本（检测架构 → GitHub
   Releases 拉取最新 **Linux 单文件二进制**（pkg 打包，服务器无需 Node.js）
   → `/opt/ts3pilot` + `/usr/local/bin/ts3pilot` 软链接，全程零系统包安装）；

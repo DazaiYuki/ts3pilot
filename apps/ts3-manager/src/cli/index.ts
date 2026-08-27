@@ -35,7 +35,8 @@ Commands:
   restore --backup B [--dest D] [--dry-run|--force]
   install --accept-eula [--version X.Y.Z] [--install-path P] [--setup-firewall]
   adopt                       Analyze an existing TS3 instance (read-only)
-  update [--execute]          Update pipeline (requires verified source)
+  update [check|self] [--mirror|--no-mirror]
+                              Check and self-update the standalone binary
   systemd generate <ts3server|ts3-agent> [--out PATH] [--user U] [--install-path P]
   help                        Show this help
 
@@ -107,7 +108,7 @@ export async function main(argv: readonly string[]): Promise<number> {
         await runAdoptCommand(ctx);
         break;
       case 'update':
-        runUpdateCommand(ctx, flags);
+        runUpdateCommand(ctx, positionals.slice(1), flags);
         break;
       case 'systemd':
         runSystemdCommand(ctx, positionals.slice(1), flags);

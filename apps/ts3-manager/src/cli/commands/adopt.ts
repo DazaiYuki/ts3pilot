@@ -22,6 +22,9 @@ export async function runAdoptCommand(ctx: CliContext): Promise<void> {
   printLine(`install path: ${analysis.installPath || '(not configured)'}`);
   printLine(`detected: ${analysis.found.join(', ') || '(none)'}`);
   printLine(`missing: ${analysis.missing.join(', ') || '(none)'}`);
+  if (analysis.optionalFound.length > 0) {
+    printLine(`optional: ${analysis.optionalFound.join(', ')}`);
+  }
   if (Object.keys(analysis.ini).length > 0) {
     printLine('ts3server.ini (relevant keys):');
     for (const [key, value] of Object.entries(analysis.ini)) {

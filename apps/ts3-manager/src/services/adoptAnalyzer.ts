@@ -16,6 +16,7 @@ export interface AdoptAnalysis {
   installPath: string;
   found: string[];
   missing: string[];
+  optionalFound: string[];
   ini: Record<string, string>;
   ports: PortProbe[];
   findings: AdoptFinding[];
@@ -29,14 +30,19 @@ export interface AdoptDependencies {
   probePort(host: string, port: number): Promise<boolean>;
 }
 
-const DETECTABLE_FILES = [
+const EXPECTED_FILES = [
   'ts3server',
-  'ts3server_linux_amd64',
   'ts3server_startscript.sh',
   'ts3server.sqlitedb',
-  'ts3server.ini',
   'files',
   'logs',
+];
+
+// Optional: a stock TS3 server can start without these (it generates the ini
+// on first run and may not use a license file). Missing optional files must not
+// produce warnings or appear in the missing list.
+const OPTIONAL_FILES = [
+  'ts3server.ini',
   'licensekey.dat',
   '.ts3server.license',
 ];
@@ -47,9 +53,13 @@ export async function analyzeExistingInstall(deps: AdoptDependencies): Promise<A
   const installPath = deps.config.ts3.installPath;
   const found: string[] = [];
   const missing: string[] = [];
-  for (const name of DETECTABLE_FILES) {
+  for (const name of EXPECTED_FILES) {
     if (deps.fileExists(join(installPath, name))) found.push(name);
     else missing.push(name);
+  }
+  const optionalFound: string[] = [];
+  for (const name of OPTIONAL_FILES) {
+    if (deps.fileExists(join(installPath, name))) optionalFound.push(name);
   }
 
   const ini = deps.config.ts3.installPath.length > 0 ? parseIni(deps.readFile(join(deps.config.ts3.installPath, 'ts3server.ini'))) : {};
@@ -70,15 +80,13 @@ export async function analyzeExistingInstall(deps: AdoptDependencies): Promise<A
   if (installPath.length === 0 || !deps.fileExists(installPath)) {
     findings.push({ kind: 'error', message: 'ts3.installPath is not set or does not exist' });
     recommendations.push('配置 ts3.installPath 指向现有 TS3 安装目录后重新运行 adopt。');
-    return { installPath, found, missing, ini, ports, findings, recommendations };
+    return { installPath, found, missing, optionalFound, ini, ports, findings, recommendations };
   }
 
   if (!found.includes('ts3server.sqlitedb')) {
     findings.push({ kind: 'warn', message: '未找到 ts3server.sqlitedb，服务器可能尚未初始化' });
   }
-  if (!found.includes('ts3server.ini')) {
-    findings.push({ kind: 'warn', message: '未找到 ts3server.ini，服务器将使用默认配置' });
-  } else {
+  if (optionalFound.includes('ts3server.ini')) {
     const whitelist = ini.query_ip_whitelist ?? '';
     if (!whitelist.split(',').map((entry) => entry.trim()).includes('127.0.0.1')) {
       findings.push({ kind: 'warn', message: `query_ip_whitelist=${whitelist || '(未设置)'} 未包含 127.0.0.1` });
@@ -102,7 +110,7 @@ export async function analyzeExistingInstall(deps: AdoptDependencies): Promise<A
   );
   findings.push({ kind: 'info', message: `发现 ${found.length} 个预期文件，缺失 ${missing.length} 个（缺失项可能正常）` });
 
-  return { installPath, found, missing, ini, ports, findings, recommendations };
+  return { installPath, found, missing, optionalFound, ini, ports, findings, recommendations };
 }
 
 function parseIni(content: string | undefined): Record<string, string> {

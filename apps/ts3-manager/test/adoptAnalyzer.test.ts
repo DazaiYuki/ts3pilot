@@ -38,8 +38,10 @@ test('adopt analyzer detects structure, parses ini and suggests minimal changes 
     });
 
     assert.ok(analysis.found.includes('ts3server.sqlitedb'));
-    assert.ok(analysis.found.includes('ts3server.ini'));
     assert.ok(analysis.found.includes('files'));
+    assert.ok(analysis.optionalFound.includes('ts3server.ini'));
+    assert.ok(!analysis.missing.includes('ts3server.ini'));
+    assert.ok(!analysis.missing.includes('licensekey.dat'));
     assert.equal(analysis.ini.query_ip_whitelist, '0.0.0.0');
     assert.ok(analysis.findings.some((finding) => finding.message.includes('query_ip_whitelist')));
     assert.ok(analysis.recommendations.some((recommendation) => recommendation.includes('ts3-manager backup')));
