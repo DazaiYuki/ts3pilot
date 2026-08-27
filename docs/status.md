@@ -49,6 +49,14 @@
   10080/10443）、安装后自动生成加固 systemd unit；Windows/开发模式走
   Mock（只打印步骤并写 EULA 标记），并有参数校验/URL/Mock/防火墙/校验和
   契约测试。
+- 分发（本轮）：`scripts/install.sh` 一键安装脚本（检测架构 → GitHub
+  Releases 拉取最新 CLI 包 → `/opt/ts3pilot` + `/usr/local/bin/ts3pilot`
+  软链接）；CI 新增 Tag（`v*`）触发 GitHub Release 并附加 CLI tar.gz 与
+  WP zip；README/quickstart 改为 Releases 下载 + 一行安装命令。
+- CI 修复（本轮）：矩阵内改用 `composer update` 按 PHP 版本解析依赖
+  （8.1→PHPUnit 10、8.2→11、8.3+→12），修复 PHP 8.1/8.2 因
+  composer.lock 锁定 PHPUnit 12 导致的安装失败；新增 install.sh
+  shellcheck job。
 - 运维底座：`system/backupEngine.ts` 真实 tar.gz 归档（ustar +
   gzip，零依赖）与恢复引擎（manifest 校验、dry-run 预检、路径沙箱、
   拒绝 `..`/绝对路径/符号链接）；`system/systemdGenerator.ts` 生成

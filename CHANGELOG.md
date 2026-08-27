@@ -14,6 +14,10 @@ All notable changes to TS3 Community Operations Suite are documented here.
   development/status/notice + bilingual quick starts).
 - CI: Node engines relaxed to >= 22.6, PHPUnit 10.5+ added for PHP 8.1,
   `engine-strict` removed.
+- Installer: one-shot `ts3pilot install` engine (official download, EULA gate,
+  tar extraction, optional UFW/Firewalld, systemd generation) and a one-line
+  Linux installer (`scripts/install.sh`).
+- Releases: CI creates a GitHub Release with assets when a `v*` tag is pushed.
 
 ## [0.1.0] - 2026-08-26
 

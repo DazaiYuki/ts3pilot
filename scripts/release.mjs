@@ -24,7 +24,7 @@ cpSync(join(root, 'apps', 'ts3-manager', 'dist'), join(cliStage, 'dist'), { recu
 for (const file of ['package.json', 'README.md', 'config.example.json']) {
   cpSync(join(root, 'apps', 'ts3-manager', file), join(cliStage, file));
 }
-for (const file of ['LICENSE', 'docs/notice.md', 'README.md', 'docs/architecture.md', 'docs/deployment.md']) {
+for (const file of ['LICENSE', 'docs/notice.md', 'README.md', 'docs/architecture.md', 'docs/deployment.md', 'scripts/install.sh']) {
   if (existsSync(join(root, file))) cpSync(join(root, file), join(cliStage, basename(file)));
 }
 const cliArchive = join(releaseDir, `ts3-manager-v${version}.tar.gz`);

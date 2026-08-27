@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [master, main]
+    tags: ['v*']
   pull_request:
 
 permissions:
@@ -38,7 +39,9 @@ jobs:
       - name: Install npm dependencies
         run: npm ci --no-audit --no-fund
       - name: Install PHP dependencies
-        run: composer install --no-interaction --no-progress --prefer-dist --working-dir=plugins/ts3pilot-wp
+        # `composer update` resolves per PHP version (PHPUnit 10/11/12);
+        # the committed composer.lock targets the dev PHP version only.
+        run: composer update --no-interaction --no-progress --prefer-dist --working-dir=plugins/ts3pilot-wp
       - name: Show resolved PHPUnit version
         run: composer show phpunit/phpunit --working-dir=plugins/ts3pilot-wp
       - name: Run full verification (lint, typecheck, tests, build, phpcs)
@@ -62,11 +65,20 @@ jobs:
           extensions: zip
           coverage: none
       - run: npm ci --no-audit --no-fund
-      - run: composer install --no-interaction --no-progress --prefer-dist --working-dir=plugins/ts3pilot-wp
+      - run: composer update --no-interaction --no-progress --prefer-dist --working-dir=plugins/ts3pilot-wp
       - name: Lint and typecheck
         run: npm run lint && npm run typecheck && npm run build
       - name: PHP suite
         run: composer test --working-dir=plugins/ts3pilot-wp
+
+  installer-lint:
+    name: shellcheck install.sh
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ludeeus/action-shellcheck@master
+        with:
+          files: scripts/install.sh
 
   windows-verify:
     name: verify on windows (node 24 / php 8.3)
@@ -86,7 +98,7 @@ jobs:
       - name: Install npm dependencies
         run: npm ci --no-audit --no-fund
       - name: Install PHP dependencies
-        run: composer install --no-interaction --no-progress --prefer-dist --working-dir=plugins/ts3pilot-wp
+        run: composer update --no-interaction --no-progress --prefer-dist --working-dir=plugins/ts3pilot-wp
       - name: Run full verification
         run: npm run verify
 
@@ -119,3 +131,28 @@ jobs:
             dist/release/*.tar.gz
             dist/release/*.zip
           if-no-files-found: error
+
+  github-release:
+    name: github release (tags)
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Build release artifacts
+        run: npm run release
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/release/ts3-manager-v*.tar.gz
+            dist/release/ts3pilot-wp-v*.zip
+          generate_release_notes: true

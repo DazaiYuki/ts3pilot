@@ -55,12 +55,15 @@ npm install
 npm run cli -- config init
 ```
 
-### Option 2: release package (production)
+### Option 2: one-line install (Linux production, recommended)
 
-After extracting `ts3-manager-v*.tar.gz`:
+One-line installer (detects architecture, fetches the latest
+`ts3-manager-v*.tar.gz` from GitHub Releases, extracts to `/opt/ts3pilot` and
+symlinks `/usr/local/bin/ts3pilot`):
 
 ```bash
-node dist/cli/index.js config init
+curl -sSL https://raw.githubusercontent.com/DazaiYuki/ts3pilot/main/scripts/install.sh | sudo bash
+ts3pilot config init
 ```
 
 ### Point it at your TS3 installation
@@ -119,8 +122,10 @@ credentials).
 
 ## 6. WordPress installation and pairing
 
-1. In the WordPress admin, go to **Plugins → Add New → Upload Plugin**, select
-   `ts3pilot-wp-v*.zip`, install and **activate**.
+1. Download `ts3pilot-wp-v*.zip` from **GitHub Releases**
+   (https://github.com/DazaiYuki/ts3pilot/releases), then in the WordPress
+   admin go to **Plugins → Add New → Upload Plugin**, select the zip, install
+   and **activate**.
 2. Open **TS3Pilot → Settings**:
    - Agent URL: default `http://127.0.0.1:17880` (same host).
    - Pairing code: paste the code from step 5.

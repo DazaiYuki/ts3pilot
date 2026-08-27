@@ -51,12 +51,19 @@ npm install
 npm run cli -- config init
 ```
 
-### 方式 2：发布包（生产）
-
-解压 `ts3-manager-v*.tar.gz` 后：
+### 方式 2：一键安装（Linux 生产，推荐）
 
 ```bash
-node dist/cli/index.js config init
+curl -sSL https://raw.githubusercontent.com/DazaiYuki/ts3pilot/main/scripts/install.sh | sudo bash
+```
+
+脚本会自动：检测架构 → 从 GitHub Releases 拉取最新 `ts3-manager-v*.tar.gz`
+→ 解压到 `/opt/ts3pilot` → 在 `/usr/local/bin/ts3pilot` 创建软链接。之后直接
+使用 `ts3pilot` 命令：
+
+```bash
+ts3pilot config init
+ts3pilot doctor
 ```
 
 ### 告诉它你的 TS3 装在哪里
@@ -113,8 +120,10 @@ npm run cli -- systemd generate ts3-agent --user ts3agent --exec-start "<node路
 
 ## 6. WordPress 插件安装与配对
 
-1. 在 WordPress 后台 **插件 → 安装插件 → 上传插件**，选择
-   `ts3pilot-wp-v*.zip`，安装并**激活**。
+1. 前往 **GitHub Releases**
+   （https://github.com/DazaiYuki/ts3pilot/releases）下载
+   `ts3pilot-wp-v*.zip`，在 WordPress 后台 **插件 → 安装插件 → 上传插件**
+   选择该 zip，安装并**激活**。
 2. 进入 **TS3Pilot → Settings**：
    - Agent URL：默认 `http://127.0.0.1:17880`（同机部署）。
    - Pairing code：粘贴第 5 步的配对码。
