@@ -22,6 +22,13 @@ All notable changes to TS3 Community Operations Suite are documented here.
   runner); Windows verify split into granular steps for faster diagnosis.
 - Line endings: added `.gitattributes` (`eol=lf`) so PHPCS/shellcheck stay
   green on Windows checkouts (CRLF was breaking WordPress line-ending rules).
+- Interactive TUI: running `ts3pilot` without arguments opens a bilingual
+  (English / 简体中文) numbered console; first run asks for language and
+  persists it (`config.language`).
+- Distribution: `scripts/install-cn.sh` + `scripts/latest.json` provide a
+  jsDelivr/npmmirror path for users who cannot reach GitHub.
+- Docs: README split into default-English `README.md` and `README.zh-CN.md`
+  with top language switcher.
 
 ## [0.1.0] - 2026-08-26
 

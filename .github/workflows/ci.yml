@@ -169,4 +169,5 @@ jobs:
           files: |
             dist/release/ts3-manager-v*.tar.gz
             dist/release/ts3pilot-wp-v*.zip
+            dist/release/latest.json
           generate_release_notes: true

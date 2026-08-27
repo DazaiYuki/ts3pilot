@@ -3,6 +3,7 @@
   "nodeId": "REPLACE-WITH-GENERATED-NODE-ID",
   "mode": "development",
   "dataDir": "",
+  "language": "",
   "ts3": {
     "installPath": "",
     "logDir": "",

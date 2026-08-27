@@ -57,6 +57,15 @@ npm run cli -- config init
 curl -sSL https://raw.githubusercontent.com/DazaiYuki/ts3pilot/main/scripts/install.sh | sudo bash
 ```
 
+无法直连 GitHub 时，使用 jsDelivr 加速版：
+
+```bash
+curl -sSL https://cdn.jsdelivr.net/gh/DazaiYuki/ts3pilot@main/scripts/install-cn.sh | sudo bash
+```
+
+（CLI 发布包镜像走 npmmirror，需先把 `@ts3pilot/ts3-manager` 发布到 npm 后
+生效；在此之前会自动回退 GitHub 资产。）
+
 脚本会自动：检测架构 → 从 GitHub Releases 拉取最新 `ts3-manager-v*.tar.gz`
 → 解压到 `/opt/ts3pilot` → 在 `/usr/local/bin/ts3pilot` 创建软链接。之后直接
 使用 `ts3pilot` 命令：

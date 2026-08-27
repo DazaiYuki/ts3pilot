@@ -101,6 +101,7 @@ export interface AppConfig {
   nodeId: string;
   mode: RunMode;
   dataDir: string;
+  language: '' | 'zh' | 'en';
   ts3: Ts3Config;
   agent: AgentConfig;
   system: SystemConfig;
@@ -123,6 +124,7 @@ export function defaultConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     nodeId: randomUUID(),
     mode: 'development',
     dataDir: '',
+    language: '',
     ts3: {
       installPath: '',
       logDir: '',
@@ -226,6 +228,7 @@ export function validateConfig(value: unknown): AppConfig {
     nodeId: expectString(record.nodeId ?? randomUUID(), 'config.nodeId', { min: 1, max: 128 }),
     mode: expectEnum(record.mode ?? 'development', 'config.mode', ['development', 'local-integration', 'production'] as const),
     dataDir: expectString(record.dataDir ?? '', 'config.dataDir', { max: 1024 }),
+    language: expectEnum(record.language ?? '', 'config.language', ['', 'zh', 'en'] as const),
     ts3: {
       installPath: expectString(ts3Record.installPath ?? '', 'config.ts3.installPath', { max: 1024 }),
       logDir: expectString(ts3Record.logDir ?? '', 'config.ts3.logDir', { max: 1024 }),

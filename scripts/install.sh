@@ -12,6 +12,7 @@ NC='\033[0m'
 REPO="DazaiYuki/ts3pilot"
 PREFIX="/opt/ts3pilot"
 BIN="/usr/local/bin/ts3pilot"
+MIRROR="${TS3PILOT_MIRROR:-github}"
 
 log() {
 	printf '%b\n' "$*"
@@ -40,14 +41,36 @@ case "$arch" in
 esac
 log "Detected architecture: ${arch} (${ts3_arch})"
 
-log "Fetching latest release metadata from GitHub..."
-api="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest")" || die "无法获取 Release 信息，请检查网络或仓库是否存在。"
-asset_url="$(
-	printf '%s' "$api" |
-		grep -oE '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]*ts3-manager-v[^"]*\.tar\.gz"' |
-		sed -E 's/.*"[[:space:]]*:[[:space:]]*"//; s/"$//' |
-		head -n1 || true
-)"
+asset_url=""
+
+resolve_asset() {
+	if [ "$MIRROR" = "jsdelivr" ]; then
+		log "Fetching release metadata via jsDelivr..."
+		info="$(curl -fsSL "https://cdn.jsdelivr.net/gh/${REPO}@main/scripts/latest.json" || true)"
+		mirror_url="$(
+			printf '%s' "$info" |
+				grep -oE '"npmmirror"[[:space:]]*:[[:space:]]*"[^"]*"' |
+				sed -E 's/.*"[[:space:]]*:[[:space:]]*"//; s/"$//' |
+				head -n1 || true
+		)"
+		if [ -n "$mirror_url" ]; then
+			asset_url="$mirror_url"
+			return 0
+		fi
+		log "Mirror metadata unavailable; falling back to GitHub."
+	fi
+
+	log "Fetching latest release metadata from GitHub..."
+	api="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest")" || die "无法获取 Release 信息，请检查网络或仓库是否存在。"
+	asset_url="$(
+		printf '%s' "$api" |
+			grep -oE '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]*ts3-manager-v[^"]*\.tar\.gz"' |
+			sed -E 's/.*"[[:space:]]*:[[:space:]]*"//; s/"$//' |
+			head -n1 || true
+	)"
+}
+
+resolve_asset
 if [ -z "$asset_url" ]; then
 	die "未在最新 Release 中找到 ts3-manager-v*.tar.gz 发布包。"
 fi

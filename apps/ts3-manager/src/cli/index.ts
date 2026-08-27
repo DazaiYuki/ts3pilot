@@ -17,6 +17,7 @@ import { runVersionCommand } from './commands/version.ts';
 import { createCliContext } from './context.ts';
 import { printError, printLine } from './print.ts';
 import { pathToFileURL } from 'node:url';
+import { runTui } from './tui.ts';
 
 const HELP = `ts3-manager — TeamSpeak 3 community operations CLI
 
@@ -41,13 +42,21 @@ Commands:
 
 Global options:
   --config <path>             Use a specific config file
+
+Run without arguments to enter the interactive bilingual console.
 `;
 
 export async function main(argv: readonly string[]): Promise<number> {
   const { positionals, flags } = parseArgs(argv);
   const command = positionals[0];
-  if (command === undefined || command === 'help' || flags.help === true) {
+  if (command === 'help' || flags.help === true) {
     printLine(HELP);
+    return 0;
+  }
+  const configPath = typeof flags.config === 'string' ? flags.config : undefined;
+  if (command === undefined) {
+    const ctx = createCliContext({ configPath });
+    await runTui(ctx);
     return 0;
   }
   if (command === 'version') {
@@ -59,7 +68,6 @@ export async function main(argv: readonly string[]): Promise<number> {
     return 0;
   }
 
-  const configPath = typeof flags.config === 'string' ? flags.config : undefined;
   try {
     const ctx = createCliContext({ configPath });
     switch (command) {

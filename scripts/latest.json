@@ -1,0 +1,6 @@
+{
+  "version": "0.1.0",
+  "github": "https://github.com/DazaiYuki/ts3pilot/releases/download/v0.1.0/ts3-manager-v0.1.0.tar.gz",
+  "npmmirror": "https://registry.npmmirror.com/@ts3pilot/ts3-manager/-/ts3-manager-0.1.0.tgz",
+  "note": "The npmmirror URL becomes active once the @ts3pilot/ts3-manager package is published to the npm registry. Until then the GitHub asset is used."
+}

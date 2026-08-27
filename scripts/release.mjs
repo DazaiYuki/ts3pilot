@@ -51,6 +51,8 @@ for (const artifact of [cliArchive, wpArchive]) {
   const size = statSync(artifact).size;
   console.log(`artifact: ${artifact} (${(size / 1024).toFixed(1)} KiB)`);
 }
+cpSync(join(root, 'scripts', 'latest.json'), join(releaseDir, 'latest.json'));
+console.log(`artifact: ${join(releaseDir, 'latest.json')} (metadata for CDN mirrors)`);
 console.log('release packaging complete.');
 
 function readFileUtf8(path) {
