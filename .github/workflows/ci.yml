@@ -76,9 +76,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ludeeus/action-shellcheck@master
-        with:
-          files: scripts/install.sh
+      - name: Run shellcheck
+        run: shellcheck scripts/install.sh
 
   windows-verify:
     name: verify on windows (node 24 / php 8.3)
@@ -99,8 +98,23 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Install PHP dependencies
         run: composer update --no-interaction --no-progress --prefer-dist --working-dir=plugins/ts3pilot-wp
-      - name: Run full verification
-        run: npm run verify
+      - name: Print versions
+        run: node --version; npm --version; php --version; composer --version
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Node tests
+        run: npm run test --workspace @ts3pilot/ts3-manager
+      - name: PHP tests
+        run: composer test --working-dir=plugins/ts3pilot-wp
+      - name: Build
+        run: npm run build
+      - name: PHP lint
+        run: php plugins/ts3pilot-wp/tests/lint-all.php
+      - name: PHPCS
+        working-directory: plugins/ts3pilot-wp
+        run: php vendor/bin/phpcs --standard=phpcs.xml.dist src tests ts3pilot-wp.php uninstall.php
 
   release:
     name: release packaging

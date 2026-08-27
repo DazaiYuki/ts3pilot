@@ -18,6 +18,8 @@ All notable changes to TS3 Community Operations Suite are documented here.
   tar extraction, optional UFW/Firewalld, systemd generation) and a one-line
   Linux installer (`scripts/install.sh`).
 - Releases: CI creates a GitHub Release with assets when a `v*` tag is pushed.
+- CI hardening: `scripts/install.sh` passes shellcheck (preinstalled on the
+  runner); Windows verify split into granular steps for faster diagnosis.
 
 ## [0.1.0] - 2026-08-26
 
