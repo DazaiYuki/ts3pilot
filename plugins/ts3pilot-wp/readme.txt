@@ -4,7 +4,7 @@ Tags: teamspeak, ts3, server, status, control plane
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 0.1.0
+Stable tag: 0.2.0
 License: Apache-2.0
 License URI: https://www.apache.org/licenses/LICENSE-2.0
 
@@ -44,6 +44,10 @@ perform the actions the site administrator grants it.
 No. WordPress capabilities and TeamSpeak permissions are completely separate.
 
 == Changelog ==
+
+= 0.2.0 =
+* Interactive bilingual console, self-update, Linux standalone binary,
+  multi-node registry, adopt false-positive fixes and more.
 
 = 0.1.0 =
 * Initial MVP: status, clients (kick/poke/move), channels, pairing, audit log,

@@ -2,7 +2,7 @@
 
 All notable changes to TS3 Community Operations Suite are documented here.
 
-## [Unreleased]
+## [0.2.0] - 2026-08-27
 
 ### Changed
 
