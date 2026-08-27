@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 #
-# TS3Pilot — one-line Linux installer.
+# TS3Pilot — one-line Linux installer (standalone binary, zero system deps).
 #   curl -sSL https://raw.githubusercontent.com/DazaiYuki/ts3pilot/main/scripts/install.sh | sudo bash
+#
+# This script NEVER installs system packages and NEVER modifies existing
+# runtime libraries (safe for aaPanel/宝塔 style environments).
 #
 set -euo pipefail
 # shellcheck shell=bash
@@ -30,19 +33,16 @@ fi
 arch="$(uname -m)"
 case "$arch" in
 	x86_64 | amd64)
-		ts3_arch="amd64"
-		;;
-	aarch64 | arm64)
-		ts3_arch="arm64"
+		ts3_arch="x64"
 		;;
 	*)
-		ts3_arch="$arch"
+		log "WARN: 官方二进制为 x86_64；当前架构 ${arch} 可能无法运行 / official binary targets x86_64."
+		ts3_arch="x64"
 		;;
 esac
 log "Detected architecture: ${arch} (${ts3_arch})"
 
 asset_url=""
-
 resolve_asset() {
 	if [ "$MIRROR" = "jsdelivr" ]; then
 		log "Fetching release metadata via jsDelivr..."
@@ -64,15 +64,15 @@ resolve_asset() {
 	api="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest")" || die "无法获取 Release 信息，请检查网络或仓库是否存在。"
 	asset_url="$(
 		printf '%s' "$api" |
-			grep -oE '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]*ts3-manager-v[^"]*\.tar\.gz"' |
+			grep -oE '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]*ts3pilot-linux-x64-v[^"]*\.tar\.gz"' |
 			sed -E 's/.*"[[:space:]]*:[[:space:]]*"//; s/"$//' |
 			head -n1 || true
 	)"
 }
-
 resolve_asset
+
 if [ -z "$asset_url" ]; then
-	die "未在最新 Release 中找到 ts3-manager-v*.tar.gz 发布包。"
+	die "未在最新 Release 中找到 ts3pilot-linux-x64-v*.tar.gz 发布包。"
 fi
 
 tmp="$(mktemp -d)"
@@ -80,28 +80,23 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 log "Downloading: ${asset_url}"
-curl -fSL "$asset_url" -o "$tmp/ts3-manager.tar.gz" || die "下载失败。"
+curl -fSL "$asset_url" -o "$tmp/ts3pilot.tar.gz" || die "下载失败。"
 
 mkdir -p "$PREFIX"
-tar -xzf "$tmp/ts3-manager.tar.gz" -C "$tmp"
+tar -xzf "$tmp/ts3pilot.tar.gz" -C "$tmp"
 
 src="$tmp"
 for candidate in "$tmp"/*; do
-	if [ -d "$candidate" ] && [ "$(basename "$candidate")" != "ts3-manager.tar.gz" ]; then
+	if [ -d "$candidate" ] && [ -f "$candidate/ts3pilot" ]; then
 		src="$candidate"
 		break
 	fi
 done
 
 cp -a "$src"/. "$PREFIX"/
-chmod +x "$PREFIX/dist/cli/index.js" 2>/dev/null || true
-ln -sfn "$PREFIX/dist/cli/index.js" "$BIN"
+chmod +x "$PREFIX/ts3pilot"
+ln -sfn "$PREFIX/ts3pilot" "$BIN"
 
 log ""
-log "${GREEN}✔ TS3Pilot CLI 安装成功 / TS3Pilot CLI installed successfully${NC}"
-log "  命令: $(command -v ts3pilot || printf '%s' "$BIN")"
-log ""
-log "下一步 / Next steps:"
-log "  新服务器（New server）:  sudo ts3pilot install --accept-eula"
-log "  接管现有（Existing）:    sudo ts3pilot adopt"
-log "  诊断（Doctor）:          ts3pilot doctor"
+log "${GREEN}安装成功！请直接输入 \`ts3pilot\` 回车，进入交互式控制台进行首次运行与配置。${NC}"
+log "${GREEN}Installed! Type \`ts3pilot\` and press Enter to start the interactive console.${NC}"

@@ -9,10 +9,11 @@
     "node": ">=22.6.0"
   },
   "bin": {
-    "ts3-manager": "dist/cli/index.js"
+    "ts3pilot": "dist/cli/index.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "bundle": "npm run build && pkg . --targets node20-linux-x64 --output dist/pkg/ts3pilot-linux-x64",
     "typecheck": "tsc -p tsconfig.json",
     "test": "node --test \"test/**/*.test.ts\"",
     "lint": "eslint src test --max-warnings 0"
@@ -20,8 +21,16 @@
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "@types/node": "^24.0.0",
+    "@yao-pkg/pkg": "^6.0.0",
     "eslint": "^9.0.0",
     "typescript": "^5.8.0",
     "typescript-eslint": "^8.0.0"
+  },
+  "pkg": {
+    "scripts": [],
+    "assets": [],
+    "targets": [
+      "node20-linux-x64"
+    ]
   }
 }

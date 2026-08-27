@@ -1,44 +1,46 @@
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
-import { basename, join, relative } from 'node:path';
+import { join, relative } from 'node:path';
 import { writeTarGzArchive } from '../apps/ts3-manager/src/system/backupEngine.ts';
 
 const root = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
-const version = JSON.parse(readFileUtf8(join(root, 'package.json'))).version;
+const version = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version;
 const releaseDir = join(root, 'dist', 'release');
+const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 console.log(`Building release v${version}...`);
 
-// 1. Compile the CLI/Agent.
-execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build', '--workspace', '@ts3pilot/ts3-manager'], {
+// 1. Compile the CLI and package it into a single Linux standalone binary.
+execFileSync(npm, ['run', 'bundle', '--workspace', '@ts3pilot/ts3-manager'], {
   cwd: root,
   stdio: 'inherit',
   shell: process.platform === 'win32',
 });
 
-// 2. Stage the CLI package and create a tar.gz using the project's own engine.
-const cliStage = join(releaseDir, `ts3-manager-v${version}`);
-rmSync(cliStage, { recursive: true, force: true });
-mkdirSync(cliStage, { recursive: true });
-cpSync(join(root, 'apps', 'ts3-manager', 'dist'), join(cliStage, 'dist'), { recursive: true });
-for (const file of ['package.json', 'README.md', 'config.example.json']) {
-  cpSync(join(root, 'apps', 'ts3-manager', file), join(cliStage, file));
+// 2. Stage the Linux package: binary + minimal static config only.
+const binary = join(root, 'apps', 'ts3-manager', 'dist', 'pkg', 'ts3pilot-linux-x64');
+if (!existsSync(binary)) {
+  throw new Error(`pkg binary not found: ${binary}`);
 }
-for (const file of ['LICENSE', 'docs/notice.md', 'README.md', 'docs/architecture.md', 'docs/deployment.md', 'scripts/install.sh']) {
-  if (existsSync(join(root, file))) cpSync(join(root, file), join(cliStage, basename(file)));
-}
-const cliArchive = join(releaseDir, `ts3-manager-v${version}.tar.gz`);
-const cliEntries = collectEntries(cliStage);
-await writeTarGzArchive(cliEntries, cliArchive);
+const stageRoot = join(releaseDir, `ts3pilot-linux-x64-v${version}`);
+const stage = join(stageRoot, 'ts3pilot');
+rmSync(stageRoot, { recursive: true, force: true });
+mkdirSync(stage, { recursive: true });
+cpSync(binary, join(stage, 'ts3pilot'));
+cpSync(join(root, 'apps', 'ts3-manager', 'config.example.json'), join(stage, 'config.example.json'));
+cpSync(join(root, 'LICENSE'), join(stage, 'LICENSE'));
+cpSync(join(root, 'docs', 'notice.md'), join(stage, 'NOTICE.md'));
 
-// 3. Stage the WordPress plugin and create a standard .zip.
+const cliArchive = join(releaseDir, `ts3pilot-linux-x64-v${version}.tar.gz`);
+await writeTarGzArchive(collectEntries(stage), cliArchive);
+
+// 3. WordPress plugin zip (unchanged: standard plugin directory structure).
 const wpRoot = join(root, 'plugins', 'ts3pilot-wp');
 const wpStageRoot = join(releaseDir, `ts3pilot-wp-v${version}`);
 const wpStage = join(wpStageRoot, 'ts3pilot-wp');
 rmSync(wpStageRoot, { recursive: true, force: true });
 mkdirSync(wpStage, { recursive: true });
-const wpFiles = collectWpFiles(wpRoot);
-for (const file of wpFiles) {
+for (const file of collectWpFiles(wpRoot)) {
   const target = join(wpStage, file);
   mkdirSync(join(wpStage, file.split(/[\\/]/).slice(0, -1).join('/')), { recursive: true });
   cpSync(join(wpRoot, file), target);
@@ -46,18 +48,14 @@ for (const file of wpFiles) {
 const wpArchive = join(releaseDir, `ts3pilot-wp-v${version}.zip`);
 execFileSync('tar', ['-a', '-cf', wpArchive, '-C', wpStageRoot, 'ts3pilot-wp'], { stdio: 'inherit' });
 
-// 4. Report.
-for (const artifact of [cliArchive, wpArchive]) {
+// 4. CDN mirror metadata.
+cpSync(join(root, 'scripts', 'latest.json'), join(releaseDir, 'latest.json'));
+
+for (const artifact of [cliArchive, wpArchive, join(releaseDir, 'latest.json')]) {
   const size = statSync(artifact).size;
   console.log(`artifact: ${artifact} (${(size / 1024).toFixed(1)} KiB)`);
 }
-cpSync(join(root, 'scripts', 'latest.json'), join(releaseDir, 'latest.json'));
-console.log(`artifact: ${join(releaseDir, 'latest.json')} (metadata for CDN mirrors)`);
 console.log('release packaging complete.');
-
-function readFileUtf8(path) {
-  return readFileSync(path, 'utf8');
-}
 
 function collectEntries(dir) {
   const entries = [];

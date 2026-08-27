@@ -16,7 +16,6 @@ import { runSystemdCommand } from './commands/systemd.ts';
 import { runVersionCommand } from './commands/version.ts';
 import { createCliContext } from './context.ts';
 import { printError, printLine } from './print.ts';
-import { pathToFileURL } from 'node:url';
 import { runTui } from './tui.ts';
 
 const HELP = `ts3-manager — TeamSpeak 3 community operations CLI
@@ -129,7 +128,11 @@ export async function main(argv: readonly string[]): Promise<number> {
   }
 }
 
-if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const code = await main(process.argv.slice(2));
-  process.exitCode = code;
-}
+main(process.argv.slice(2))
+  .then((code) => {
+    process.exitCode = code;
+  })
+  .catch((error) => {
+    printError(`fatal: ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+  });

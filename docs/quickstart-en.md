@@ -58,8 +58,9 @@ npm run cli -- config init
 ### Option 2: one-line install (Linux production, recommended)
 
 One-line installer (detects architecture, fetches the latest
-`ts3-manager-v*.tar.gz` from GitHub Releases, extracts to `/opt/ts3pilot` and
-symlinks `/usr/local/bin/ts3pilot`):
+`ts3pilot-linux-x64-v*.tar.gz` — a **standalone binary, no Node.js required on
+the server** — extracts to `/opt/ts3pilot` and symlinks
+`/usr/local/bin/ts3pilot`):
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/DazaiYuki/ts3pilot/main/scripts/install.sh | sudo bash

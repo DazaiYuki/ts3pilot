@@ -40,6 +40,8 @@ CLI/Agent 独立可用，WordPress 插件是可选的 Web 控制平面，两者�
    curl -sSL https://raw.githubusercontent.com/DazaiYuki/ts3pilot/main/scripts/install.sh | sudo bash
    ```
 
+   发布包为**独立单文件二进制，服务器无需安装 Node.js**。
+
    无法直连 GitHub？使用 jsDelivr 加速版：
 
    ```bash

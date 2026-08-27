@@ -37,7 +37,9 @@ jobs:
       - name: Print toolchain versions
         run: node --version && npm --version && php --version && composer --version
       - name: Install npm dependencies
-        run: npm ci --no-audit --no-fund
+        # `npm install` (not ci) so the lockfile picks up @yao-pkg/pkg on the
+        # runner; local lockfiles are regenerated on the maintainer machine.
+        run: npm install --no-audit --no-fund
       - name: Install PHP dependencies
         # `composer update` resolves per PHP version (PHPUnit 10/11/12);
         # the committed composer.lock targets the dev PHP version only.
@@ -64,7 +66,7 @@ jobs:
           php-version: '8.3'
           extensions: zip
           coverage: none
-      - run: npm ci --no-audit --no-fund
+      - run: npm install --no-audit --no-fund
       - run: composer update --no-interaction --no-progress --prefer-dist --working-dir=plugins/ts3pilot-wp
       - name: Lint and typecheck
         run: npm run lint && npm run typecheck && npm run build
@@ -95,7 +97,7 @@ jobs:
           extensions: zip
           coverage: none
       - name: Install npm dependencies
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
       - name: Install PHP dependencies
         run: composer update --no-interaction --no-progress --prefer-dist --working-dir=plugins/ts3pilot-wp
       - name: Print versions
@@ -127,15 +129,15 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
-      - run: npm ci --no-audit --no-fund
+      - run: npm install --no-audit --no-fund
       - name: Build release artifacts
         run: npm run release
       - name: Validate artifacts
         run: |
-          test -f dist/release/ts3-manager-v*.tar.gz
+          test -f dist/release/ts3pilot-linux-x64-v*.tar.gz
           test -f dist/release/ts3pilot-wp-v*.zip
           echo "--- CLI tarball (first entries) ---"
-          tar -tzf dist/release/ts3-manager-v*.tar.gz | head -n 5
+          tar -tzf dist/release/ts3pilot-linux-x64-v*.tar.gz | head -n 5
           echo "--- WP zip (entry count) ---"
           unzip -l dist/release/ts3pilot-wp-v*.zip | tail -n 2
       - uses: actions/upload-artifact@v4
@@ -160,14 +162,14 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
-      - run: npm ci --no-audit --no-fund
+      - run: npm install --no-audit --no-fund
       - name: Build release artifacts
         run: npm run release
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/release/ts3-manager-v*.tar.gz
+            dist/release/ts3pilot-linux-x64-v*.tar.gz
             dist/release/ts3pilot-wp-v*.zip
             dist/release/latest.json
           generate_release_notes: true

@@ -29,6 +29,10 @@ All notable changes to TS3 Community Operations Suite are documented here.
   jsDelivr/npmmirror path for users who cannot reach GitHub.
 - Docs: README split into default-English `README.md` and `README.zh-CN.md`
   with top language switcher.
+- Distribution: CLI now ships as a Linux-only standalone binary built with
+  `pkg` (`ts3pilot-linux-x64-v*.tar.gz` containing the single `ts3pilot`
+  executable + `config.example.json`); production servers need no Node.js and
+  the installer never touches system packages.
 
 ## [0.1.0] - 2026-08-26
 

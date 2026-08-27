@@ -10,7 +10,7 @@
 | `composer install`（WP 插件开发依赖） | 通过（30 包） |
 | ESLint（ts3-manager src/test） | 通过，0 warning |
 | `tsc -p tsconfig.json`（strict，含测试） | 通过 |
-| `node --test`（ts3-manager） | 86/86 通过 |
+| `node --test`（ts3-manager） | 89/89 通过 |
 | PHPUnit（WP 插件） | 44 测试 / 117 断言通过 |
 | PHP lint（全部 PHP 文件） | 33/33 通过 |
 | PHPCS（WordPress-Extra，含豁免项） | 通过 |
@@ -50,9 +50,9 @@
   Mock（只打印步骤并写 EULA 标记），并有参数校验/URL/Mock/防火墙/校验和
   契约测试。
 - 分发（本轮）：`scripts/install.sh` 一键安装脚本（检测架构 → GitHub
-  Releases 拉取最新 CLI 包 → `/opt/ts3pilot` + `/usr/local/bin/ts3pilot`
-  软链接）；CI 新增 Tag（`v*`）触发 GitHub Release 并附加 CLI tar.gz 与
-  WP zip；README/quickstart 改为 Releases 下载 + 一行安装命令。
+  Releases 拉取最新 **Linux 单文件二进制**（pkg 打包，服务器无需 Node.js）
+  → `/opt/ts3pilot` + `/usr/local/bin/ts3pilot` 软链接，全程零系统包安装）；
+  CI 新增 Tag（`v*`）触发 GitHub Release 并附加 CLI tar.gz 与 WP zip。
 - CI 修复（本轮）：矩阵内改用 `composer update` 按 PHP 版本解析依赖
   （8.1→PHPUnit 10、8.2→11、8.3+→12），修复 PHP 8.1/8.2 因
   composer.lock 锁定 PHPUnit 12 导致的安装失败；新增 install.sh
@@ -143,6 +143,9 @@
 - PHP zip 扩展未启用：composer 以源码模式安装（已成功）。
 - PowerShell 执行策略限制 `npm.ps1`：统一使用 `npm.cmd`。
 - Windows 无 systemd：ServiceManager 自动降级 mock（这是设计而非缺陷）。
+- 本沙箱无外网：`@yao-pkg/pkg` 无法本地安装，Linux 单文件二进制由
+  GitHub Actions（release job）构建并在打包后校验产物；本地
+  `npm run release` 需要网络以拉取 pkg 基础二进制。
 
 ## 6. 下一步建议
 

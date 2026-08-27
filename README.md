@@ -39,6 +39,9 @@ host control plane and optional WordPress integration.
    curl -sSL https://raw.githubusercontent.com/DazaiYuki/ts3pilot/main/scripts/install.sh | sudo bash
    ```
 
+   The release is a **standalone binary — Node.js is not required** on the
+   server.
+
    Can't reach GitHub? Use the jsDelivr mirror:
 
    ```bash

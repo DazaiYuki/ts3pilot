@@ -66,9 +66,10 @@ curl -sSL https://cdn.jsdelivr.net/gh/DazaiYuki/ts3pilot@main/scripts/install-cn
 （CLI 发布包镜像走 npmmirror，需先把 `@ts3pilot/ts3-manager` 发布到 npm 后
 生效；在此之前会自动回退 GitHub 资产。）
 
-脚本会自动：检测架构 → 从 GitHub Releases 拉取最新 `ts3-manager-v*.tar.gz`
-→ 解压到 `/opt/ts3pilot` → 在 `/usr/local/bin/ts3pilot` 创建软链接。之后直接
-使用 `ts3pilot` 命令：
+脚本会自动：检测架构 → 从 GitHub Releases 拉取最新
+`ts3pilot-linux-x64-v*.tar.gz`（**独立单文件二进制，服务器无需安装
+Node.js**）→ 解压到 `/opt/ts3pilot` → 赋予执行权限 → 在
+`/usr/local/bin/ts3pilot` 创建软链接。之后直接使用 `ts3pilot` 命令：
 
 ```bash
 ts3pilot config init
