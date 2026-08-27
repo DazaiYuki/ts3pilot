@@ -34,8 +34,11 @@ WordPress 配对、前台展示，以及常见问题排查。
    `ts3server.sqlitedb` 与 `ts3server.ini`，并把 serveradmin 密码打印到日志。
 4. 确认 `./ts3server_startscript.sh start` 能正常启动。
 
-> 本套件的 `install` 命令会输出完整安装计划；执行管线（下载/校验/替换）属于
-> 后续里程碑，当前请先手动完成官方安装。
+> 也可以使用一键安装：`npm run cli -- install --accept-eula --version 3.13.7
+> --install-path /srv/ts3 --setup-firewall`（Linux 下自动下载、`tar -xjf`
+> 解压、创建 `.ts3server_license_accepted`、按需配置 UFW/Firewalld 并生成
+> systemd unit；Windows/开发环境自动走 mock 流程）。请先阅读 TeamSpeak
+> 官方许可协议，确认同意后再加 `--accept-eula`。
 
 ## 3. 安装与配置 ts3-manager
 

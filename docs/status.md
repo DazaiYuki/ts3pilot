@@ -10,7 +10,7 @@
 | `composer install`（WP 插件开发依赖） | 通过（30 包） |
 | ESLint（ts3-manager src/test） | 通过，0 warning |
 | `tsc -p tsconfig.json`（strict，含测试） | 通过 |
-| `node --test`（ts3-manager） | 78/78 通过 |
+| `node --test`（ts3-manager） | 86/86 通过 |
 | PHPUnit（WP 插件） | 44 测试 / 117 断言通过 |
 | PHP lint（全部 PHP 文件） | 33/33 通过 |
 | PHPCS（WordPress-Extra，含豁免项） | 通过 |
@@ -41,7 +41,15 @@
   完成握手/命令/通知/登录失败契约测试。
 - 备份/恢复：目录复制 + manifest（sha256 校验和）+ 路径逃逸防护 +
   开发模式破坏性操作开关（`TS3_MANAGER_ALLOW_DESTRUCTIVE`）。
-- 运维底座（本轮）：`system/backupEngine.ts` 真实 tar.gz 归档（ustar +
+- 一键安装（本轮）：`services/installer.ts` — 官方源 URL 拼接（默认
+  `files.teamspeak-services.com/releases/server/3.13.7/...tar.bz2`，可
+  `--version`/`--source-url` 覆盖）、强制 `--accept-eula` 并写入
+  `.ts3server_license_accepted`、Linux 下 `tar -xjf` 解压迁移、可选
+  `--setup-firewall`（自动检测 ufw/firewalld 放行 9987/30033/10011/10022/
+  10080/10443）、安装后自动生成加固 systemd unit；Windows/开发模式走
+  Mock（只打印步骤并写 EULA 标记），并有参数校验/URL/Mock/防火墙/校验和
+  契约测试。
+- 运维底座：`system/backupEngine.ts` 真实 tar.gz 归档（ustar +
   gzip，零依赖）与恢复引擎（manifest 校验、dry-run 预检、路径沙箱、
   拒绝 `..`/绝对路径/符号链接）；`system/systemdGenerator.ts` 生成
   ts3server/ts3-agent 加固 unit（NoNewPrivileges/ProtectSystem=strict/
@@ -105,7 +113,8 @@
 | Agent maintenance update | 501 | update 管线仍待已验证官方源；backup/restore 已真实实现 |
 | WebQuery 真实请求 | 门控 | 端点映射需对照官方文档验证后打开 `verified=true` |
 | ServerQuery 真实联调 | 需验证 | 协议契约测试已通过；与真实 TS3 的最终核对仍待 Docker/实机 |
-| install/update 执行管线 | 计划模式 | 需已验证官方源（URL+sha256）后实现下载/校验/替换/回滚 |
+| install 执行管线 | 已实现 | Linux 真实执行（下载/解压/防火墙/systemd），官方文件名模式需在发布前核对 |
+| update 执行管线 | 计划模式 | 需已验证官方源（URL+sha256）后实现下载/校验/替换/回滚 |
 | 服务器配置读写 | capability 已预留 | 尚未开放端点 |
 | Bot 私聊验证通道 / away 字段 / 加入链接生成 / 角色同步 | 预留 | `identity.verify.field` 已支持 nickname；Bot 通道与角色同步后续实现 |
 | 多节点 | 已实现 | WP NodeRegistry + 切换器 + 每节点独立凭据与路由隔离 |

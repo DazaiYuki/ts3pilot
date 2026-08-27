@@ -33,7 +33,7 @@ Commands:
   logs [--lines N]            Show recent TS3 logs (mock in development)
   backup [--source X] [--dest Y]
   restore --backup B [--dest D] [--dry-run|--force]
-  install [--execute]         Print (or execute on Linux) the install plan
+  install --accept-eula [--version X.Y.Z] [--install-path P] [--setup-firewall]
   adopt                       Analyze an existing TS3 instance (read-only)
   update [--execute]          Update pipeline (requires verified source)
   systemd generate <ts3server|ts3-agent> [--out PATH] [--user U] [--install-path P]

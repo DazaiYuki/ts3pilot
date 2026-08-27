@@ -37,9 +37,12 @@ pair WordPress**.
    password to the log.
 4. Verify `./ts3server_startscript.sh start` works.
 
-> The built-in `install` command prints a full plan; the download/verify/swap
-> execution pipeline is a later milestone. Please complete the official
-> installation manually for now.
+> You can also use one-shot install: `npm run cli -- install --accept-eula
+> --version 3.13.7 --install-path /srv/ts3 --setup-firewall` (on Linux this
+> downloads the official archive, extracts with `tar -xjf`, writes
+> `.ts3server_license_accepted`, optionally configures UFW/Firewalld and
+> generates a systemd unit; Windows/development falls back to a mock flow).
+> Read the official TeamSpeak EULA and add `--accept-eula` only if you agree.
 
 ## 3. Install and configure ts3-manager
 

@@ -101,6 +101,7 @@ node dist/cli/index.js api enable
 | `ts3-manager logs --lines 100` | 查看日志 |
 | `ts3-manager api enable / status / disable` | Agent API 生命周期 |
 | `ts3-manager identity worker once` | 身份核验单轮扫描 |
+| `ts3-manager install --accept-eula --setup-firewall` | 官方源下载安装 TS3 Server（Linux；Windows/开发为 mock） |
 | `ts3-manager systemd generate ts3server` | 生成加固 systemd unit |
 
 完整列表见 [docs/quickstart-zh.md](docs/quickstart-zh.md) 与 CLI `--help`。
