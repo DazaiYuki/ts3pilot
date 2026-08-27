@@ -80,6 +80,16 @@ final class Client {
 	}
 
 	/**
+	 * Authenticated node introspection (requires a valid per-node credential).
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function info( ?string $node_id = null ): array {
+		$client = null === $node_id ? $this : $this->for_node( $node_id );
+		return $client->request( 'GET', '/v1/info' );
+	}
+
+	/**
 	 * @return array<int, array<string, mixed>>
 	 */
 	public function clients(): array {

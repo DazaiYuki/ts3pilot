@@ -12,6 +12,7 @@ error_reporting( E_ALL );
 define( 'ABSPATH', __DIR__ . '/../' );
 define( 'WPINC', 'wp-includes' );
 define( 'WP_DEBUG', true );
+defined( 'TS3PILOT_VERSION' ) || define( 'TS3PILOT_VERSION', '0.3.0' );
 
 spl_autoload_register(
 	static function ( string $class ): void {
@@ -177,6 +178,14 @@ function wp_remote_request( string $url, array $args = array() ) {
 }
 
 /**
+ * @param array<string, mixed> $args
+ * @return array<string, mixed>|WP_Error
+ */
+function wp_remote_get( string $url, array $args = array() ) {
+	return wp_remote_request( $url, $args );
+}
+
+/**
  * @param mixed ...$args
  */
 function register_rest_route( string $namespace, string $route, array $args = array() ): bool {
@@ -261,6 +270,10 @@ function __( string $text, string $domain = 'default' ): string {
 }
 
 function esc_html__( string $text, string $domain = 'default' ): string {
+	return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
+}
+
+function esc_attr__( string $text, string $domain = 'default' ): string {
 	return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
 }
 

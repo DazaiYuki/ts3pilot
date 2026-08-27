@@ -184,11 +184,24 @@ ts3-manager backup --dest /srv/backups/ts3-$(date +%F).tar.gz
 ts3-manager restore --backup /srv/backups/ts3-xxx.tar.gz --dry-run
 ts3-manager restore --backup /srv/backups/ts3-xxx.tar.gz --force
 ts3-manager logs --lines 100
+ts3-manager update          # check and self-update the CLI binary (no reinstall needed)
+ts3-manager update check    # only check for a newer version
 ts3-manager api status
 ts3-manager identity worker once
 ```
 
 ## 9. FAQ
+
+### Q0: How do I upgrade ts3pilot itself?
+
+- Run `ts3pilot update` (or console menu [7]). It fetches the latest release
+  from GitHub, verifies the gzip archive, atomically replaces the binary and
+  runs a smoke test, rolling back automatically on failure. A mirror fallback
+  chain is used automatically in regions where GitHub is slow.
+- Just want to know if a newer version exists? `ts3pilot update check`.
+- The WordPress plugin checks GitHub Releases too: open WP Admin → Plugins and
+  the standard "update available" notice will appear (no wordpress.org listing
+  required).
 
 ### Q1: `doctor` reports ports 9987/10011 as closed
 

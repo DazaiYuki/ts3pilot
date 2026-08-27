@@ -20,6 +20,7 @@ use Ts3Pilot\Rest\Routes;
 use Ts3Pilot\Services\StatusService;
 use Ts3Pilot\Settings\Repository;
 use Ts3Pilot\Settings\Settings;
+use Ts3Pilot\Updater\GitHubUpdater;
 
 final class Plugin {
 	private static ?Plugin $instance = null;
@@ -35,6 +36,7 @@ final class Plugin {
 		register_activation_hook( TS3PILOT_PLUGIN_FILE, array( Capabilities::class, 'grant_defaults' ) );
 		Actions::register();
 		Assets::register();
+		GitHubUpdater::register();
 
 		add_action( 'init', array( Capabilities::class, 'register' ) );
 		add_action( 'init', array( $this, 'register_services' ) );

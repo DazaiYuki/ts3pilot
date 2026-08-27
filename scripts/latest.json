@@ -1,6 +1,6 @@
 {
-  "version": "0.2.0",
-  "github": "https://github.com/DazaiYuki/ts3pilot/releases/download/v0.2.0/ts3pilot-linux-x64-v0.2.0.tar.gz",
-  "npmmirror": "https://registry.npmmirror.com/@ts3pilot/ts3-manager/-/ts3-manager-0.2.0.tgz",
+  "version": "0.3.0",
+  "github": "https://github.com/DazaiYuki/ts3pilot/releases/download/v0.3.0/ts3pilot-linux-x64-v0.3.0.tar.gz",
+  "npmmirror": "https://registry.npmmirror.com/@ts3pilot/ts3-manager/-/ts3-manager-0.3.0.tgz",
   "note": "The npmmirror URL becomes active once the @ts3pilot/ts3-manager package is published to the npm registry. Until then the GitHub asset is used."
 }

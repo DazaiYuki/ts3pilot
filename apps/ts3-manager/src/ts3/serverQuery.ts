@@ -60,7 +60,7 @@ export class ServerQueryTeamSpeakClient implements TeamSpeakClient {
         throw new AppError(ErrorCode.CONFIG, 'ServerQuery credentials (ts3.query.username/password) are not configured');
       }
       this.connection = new ServerQueryConnection({
-        host: '127.0.0.1',
+        host: this.config.ts3.query.host.trim().length > 0 ? this.config.ts3.query.host : '127.0.0.1',
         port: query.rawPort,
         username: query.username,
         password: query.password,

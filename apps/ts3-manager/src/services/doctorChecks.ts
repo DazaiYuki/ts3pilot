@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import type { AppConfig } from '../domain/schemas.ts';
+import type { DeploymentProfile } from './deploymentProfile.ts';
 
 export type CheckSeverity = 'ok' | 'warn' | 'fail';
 
@@ -23,6 +24,7 @@ export interface DoctorDependencies {
   agentHealth(): Promise<'ok' | 'unreachable'>;
   serverQueryAuth(): Promise<boolean | undefined>;
   providerAvailable(): Promise<boolean>;
+  deployment?: DeploymentProfile;
 }
 
 const SQLITE_MAGIC = Buffer.from('SQLite format 3\0');
@@ -43,6 +45,29 @@ export async function runDoctorChecks(deps: DoctorDependencies): Promise<DoctorC
     detail: deps.configPath,
   });
   checks.push({ name: 'run mode', severity: 'ok', detail: config.mode });
+
+  if (deps.deployment !== undefined) {
+    const d = deps.deployment;
+    checks.push({
+      name: 'deployment profile',
+      severity: 'ok',
+      detail: `${d.mode} (serverQuery=${d.capabilities.serverQuery ? 'yes' : 'no'}, filesystem=${d.capabilities.filesystem ? 'yes' : 'no'})${d.dockerContainer ? ` container=${d.dockerContainer}` : ''}`,
+    });
+    if (d.mode === 'docker' && config.ts3.installPath.length === 0) {
+      checks.push({
+        name: 'docker volume path',
+        severity: 'warn',
+        detail: 'set ts3.installPath to the host volume path so backup/logs can read TS3 files',
+      });
+    }
+    if (d.mode === 'remote') {
+      checks.push({
+        name: 'remote mode',
+        severity: 'warn',
+        detail: 'query-only control plane; install/backup/restore/systemd are unavailable on this host',
+      });
+    }
+  }
 
   const installPath = config.ts3.installPath;
   if (installPath.length === 0) {
@@ -72,20 +97,22 @@ export async function runDoctorChecks(deps: DoctorDependencies): Promise<DoctorC
     }
   }
 
-  const portChecks: Array<{ name: string; port: number }> = [
-    { name: 'voice port', port: config.ts3.voicePort },
-    { name: 'file transfer port', port: config.ts3.fileTransferPort },
-    { name: 'serverquery raw port', port: config.ts3.query.rawPort },
-    { name: 'serverquery ssh port', port: config.ts3.query.sshPort },
-    { name: 'webquery http port', port: config.ts3.query.webQuery.httpPort },
-    { name: 'webquery https port', port: config.ts3.query.webQuery.httpsPort },
+  const queryHost = config.ts3.query.host.trim().length > 0 ? config.ts3.query.host : '127.0.0.1';
+  const remote = deps.deployment?.mode === 'remote';
+  const portChecks: Array<{ name: string; port: number; host: string }> = [
+    { name: 'voice port', port: config.ts3.voicePort, host: remote ? queryHost : '127.0.0.1' },
+    { name: 'file transfer port', port: config.ts3.fileTransferPort, host: remote ? queryHost : '127.0.0.1' },
+    { name: 'serverquery raw port', port: config.ts3.query.rawPort, host: queryHost },
+    { name: 'serverquery ssh port', port: config.ts3.query.sshPort, host: queryHost },
+    { name: 'webquery http port', port: config.ts3.query.webQuery.httpPort, host: queryHost },
+    { name: 'webquery https port', port: config.ts3.query.webQuery.httpsPort, host: queryHost },
   ];
   for (const entry of portChecks) {
-    const open = await deps.probePort('127.0.0.1', entry.port);
+    const open = await deps.probePort(entry.host, entry.port);
     checks.push({
       name: entry.name,
       severity: open ? 'ok' : 'warn',
-      detail: `127.0.0.1:${entry.port} (${open ? 'open' : 'closed'})`,
+      detail: `${entry.host}:${entry.port} (${open ? 'open' : 'closed'})`,
     });
   }
 

@@ -37,7 +37,7 @@ TS3PILOT-HMAC-SHA256 v1
 | Method | Path | 认证 | Capability | 说明 |
 | --- | --- | --- | --- | --- |
 | GET | `/v1/health` | 公开 | — | 健康检查（不泄露 secret） |
-| GET | `/v1/info` | HMAC | — | Agent 元信息（nodeId/mode/capabilities/providers） |
+| GET | `/v1/info` | HMAC | — | Agent 元信息（nodeId/mode/capabilities/providers/deployment 形态） |
 | GET | `/v1/ts3/status` | HMAC | `ts3.status` | 服务器状态 |
 | GET | `/v1/ts3/clients` | HMAC | `ts3.clients.list` | 在线客户端列表 |
 | GET | `/v1/ts3/channels` | HMAC | `ts3.channels.list` | 频道树 |

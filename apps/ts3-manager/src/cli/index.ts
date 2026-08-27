@@ -102,13 +102,13 @@ export async function main(argv: readonly string[]): Promise<number> {
         await runRestoreCommand(ctx, flags);
         break;
       case 'install':
-        runInstallCommand(ctx, flags);
+        await runInstallCommand(ctx, flags);
         break;
       case 'adopt':
         await runAdoptCommand(ctx);
         break;
       case 'update':
-        runUpdateCommand(ctx, positionals.slice(1), flags);
+        await runUpdateCommand(ctx, positionals.slice(1), flags);
         break;
       case 'systemd':
         runSystemdCommand(ctx, positionals.slice(1), flags);

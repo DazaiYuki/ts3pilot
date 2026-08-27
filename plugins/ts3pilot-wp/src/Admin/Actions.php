@@ -37,6 +37,7 @@ final class Actions {
 		add_action( 'admin_post_ts3pilot_node_add', array( self::class, 'node_add' ) );
 		add_action( 'admin_post_ts3pilot_node_update', array( self::class, 'node_update' ) );
 		add_action( 'admin_post_ts3pilot_node_delete', array( self::class, 'node_delete' ) );
+		add_action( 'admin_post_ts3pilot_node_test', array( self::class, 'node_test' ) );
 	}
 
 	public static function switch_node(): void {
@@ -114,6 +115,41 @@ final class Actions {
 		$registry = new NodeRegistry( new Repository() );
 		$registry->remove( $node_id );
 		wp_safe_redirect( admin_url( 'admin.php?page=ts3pilot-settings&ts3pilot_result=node_deleted' ) );
+		exit;
+	}
+
+	public static function node_test(): void {
+		self::require_capability( 'manage_options' );
+		$node_id = sanitize_key( (string) ( $_POST['node_id'] ?? '' ) );
+		check_admin_referer( 'ts3pilot_node_test_' . $node_id, 'ts3pilot_nonce' );
+		$registry = new NodeRegistry( new Repository() );
+		if ( ! $registry->is_valid_id( $node_id ) ) {
+			wp_die( 'Unknown node.' );
+		}
+		try {
+			$info = ( new Client( new Repository() ) )->info( $node_id );
+			set_transient(
+				'ts3pilot_node_test_' . $node_id,
+				array(
+					'nodeId'         => sanitize_text_field( (string) ( $info['nodeId'] ?? '' ) ),
+					'mode'           => sanitize_key( (string) ( $info['mode'] ?? '' ) ),
+					'ts3Provider'    => sanitize_key( (string) ( $info['ts3Provider'] ?? '' ) ),
+					'systemProvider' => sanitize_key( (string) ( $info['systemProvider'] ?? '' ) ),
+					'deployment'     => sanitize_key( (string) ( $info['deployment']['mode'] ?? 'unknown' ) ),
+					'remoteMode'     => (bool) ( $info['remoteMode'] ?? false ),
+					'testedAt'       => time(),
+				),
+				60
+			);
+			AuditLog::append( 'node.test', 'node:' . $node_id, 'success' );
+			$result = 'test_ok';
+		} catch ( AgentException $error ) {
+			AuditLog::append( 'node.test', 'node:' . $node_id, 'failed', $error->error_code );
+			$result = 'test_failed';
+		}
+		wp_safe_redirect(
+			admin_url( 'admin.php?page=ts3pilot-settings&ts3pilot_result=' . $result . '&node=' . rawurlencode( $node_id ) )
+		);
 		exit;
 	}
 

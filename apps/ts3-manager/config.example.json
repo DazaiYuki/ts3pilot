@@ -10,12 +10,17 @@
     "startScript": "ts3server_startscript.sh",
     "voicePort": 9987,
     "fileTransferPort": 30033,
+    "deployment": {
+      "kind": "auto",
+      "dockerContainer": ""
+    },
     "install": {
       "sourceUrl": "",
       "sha256": "",
       "verified": false
     },
     "query": {
+      "host": "127.0.0.1",
       "rawPort": 10011,
       "sshPort": 10022,
       "username": "",

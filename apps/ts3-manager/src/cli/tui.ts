@@ -21,6 +21,25 @@ export function persistLanguage(cfgPath: string, language: TuiLanguage): void {
   updateConfig(cfgPath, (config) => ({ ...config, language }));
 }
 
+/**
+ * The language selection menu is intentionally bilingual no matter which
+ * language is currently active, so a user who accidentally switched can
+ * always find the way back without guessing.
+ */
+export function buildLanguageMenu(): string {
+  return [
+    '',
+    '[1] English (英文)',
+    '[2] 简体中文 (中文)',
+    'Please select / 请选择 (1/2): ',
+    '',
+  ].join('\n');
+}
+
+export function languageSwitchMessage(language: TuiLanguage): string {
+  return language === 'zh' ? '语言已切换为简体中文 / Language set to Simplified Chinese' : 'Language set to English / 语言已切换为英文';
+}
+
 export function buildMainMenu(language: TuiLanguage): string {
   if (language === 'zh') {
     return [
@@ -122,17 +141,17 @@ export async function runTui(ctx: CliContext): Promise<void> {
 export async function chooseLanguage(question: Question, ctx: CliContext): Promise<TuiLanguage> {
   printLine('');
   printLine('Welcome to TS3Pilot! 欢迎使用 TS3Pilot！');
-  printLine('');
-  printLine('[1] English');
-  printLine('[2] 简体中文');
   for (;;) {
-    const answer = (await question('Please select your language / 请选择语言 (1/2): ')).trim();
+    printLine(buildLanguageMenu());
+    const answer = (await question('Please select / 请选择 (1/2): ')).trim();
     if (answer === '1') {
       persistLanguage(ctx.cfgPath, 'en');
+      printLine(languageSwitchMessage('en'));
       return 'en';
     }
     if (answer === '2') {
       persistLanguage(ctx.cfgPath, 'zh');
+      printLine(languageSwitchMessage('zh'));
       return 'zh';
     }
     printLine('Invalid choice / 无效选择，请输入 1 或 2。');
@@ -184,7 +203,7 @@ export async function dispatchTuiChoice(
       await autostartMenu(language, ctx, question);
       return;
     case '9':
-      return changeLanguageMenu(language, ctx, question);
+      return changeLanguageMenu(ctx, question);
     default:
       printLine(zh ? `无效选项：${choice}` : `Invalid option: ${choice}`);
   }
@@ -221,21 +240,23 @@ async function autostartMenu(language: TuiLanguage, ctx: CliContext, question: Q
   );
 }
 
-async function changeLanguageMenu(language: TuiLanguage, ctx: CliContext, question: Question): Promise<TuiLanguage | undefined> {
-  const zh = language === 'zh';
-  printLine('[1] English');
-  printLine('[2] 简体中文');
-  const pick = (await question(zh ? '请选择语言 (1/2): ' : 'Please select language (1/2): ')).trim();
-  if (pick === '1') {
-    persistLanguage(ctx.cfgPath, 'en');
-    return 'en';
+async function changeLanguageMenu(ctx: CliContext, question: Question): Promise<TuiLanguage | undefined> {
+  printLine('=== Language / 语言 ===');
+  for (;;) {
+    printLine(buildLanguageMenu());
+    const pick = (await question('Please select / 请选择 (1/2): ')).trim();
+    if (pick === '1') {
+      persistLanguage(ctx.cfgPath, 'en');
+      printLine(languageSwitchMessage('en'));
+      return 'en';
+    }
+    if (pick === '2') {
+      persistLanguage(ctx.cfgPath, 'zh');
+      printLine(languageSwitchMessage('zh'));
+      return 'zh';
+    }
+    printLine('Invalid choice / 无效选择，请输入 1 或 2。');
   }
-  if (pick === '2') {
-    persistLanguage(ctx.cfgPath, 'zh');
-    return 'zh';
-  }
-  printLine(zh ? '无效选择。' : 'Invalid choice.');
-  return undefined;
 }
 
 function resolveTuiBinaryPath(): string {

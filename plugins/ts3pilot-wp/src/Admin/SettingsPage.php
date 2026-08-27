@@ -89,9 +89,26 @@ final class SettingsPage {
 			'node_added'   => 'Node added.',
 			'node_updated' => 'Node updated.',
 			'node_deleted' => 'Node deleted.',
+			'test_failed'  => 'Connection test failed (check endpoint, credential and Agent status).',
 		);
 		if ( isset( $messages[ $result ] ) ) {
 			echo '<div class="notice notice-success"><p>' . esc_html( $messages[ $result ] ) . '</p></div>';
+		} elseif ( 'test_ok' === $result ) {
+			$node_id = sanitize_key( (string) ( $_GET['node'] ?? '' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$info    = '' === $node_id ? array() : get_transient( 'ts3pilot_node_test_' . $node_id );
+			if ( is_array( $info ) && count( $info ) > 0 ) {
+				$detail = sprintf(
+					'Connection OK — node %s, TS3 provider %s, system provider %s, deployment %s, remote mode %s.',
+					(string) ( $info['nodeId'] ?? $node_id ),
+					(string) ( $info['ts3Provider'] ?? 'unknown' ),
+					(string) ( $info['systemProvider'] ?? 'unknown' ),
+					(string) ( $info['deployment'] ?? 'unknown' ),
+					! empty( $info['remoteMode'] ) ? 'yes' : 'no'
+				);
+				echo '<div class="notice notice-success"><p>' . esc_html( $detail ) . '</p></div>';
+			} else {
+				echo '<div class="notice notice-success"><p>' . esc_html__( 'Connection test succeeded.', 'ts3pilot' ) . '</p></div>';
+			}
 		}
 	}
 
@@ -109,6 +126,13 @@ final class SettingsPage {
 		$html .= '<p><label>Credential (leave blank to keep): <input type="password" name="credential" class="regular-text" /></label></p>';
 		$html .= '<p><label>Timeout: <input type="number" name="timeout" min="1" max="60" value="' . esc_attr( (string) ( $node['timeout'] ?? 8 ) ) . '" /></label></p>';
 		$html .= '<button class="button button-small" type="submit">Save</button></form></details>';
+		$html .= '<details class="ts3pilot-inline-form"><summary>Test connection</summary>';
+		$html .= '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		$html .= '<input type="hidden" name="action" value="ts3pilot_node_test" />';
+		$html .= '<input type="hidden" name="node_id" value="' . esc_attr( $node_id ) . '" />';
+		wp_nonce_field( 'ts3pilot_node_test_' . $node_id, 'ts3pilot_nonce' );
+		$html .= '<p class="description">' . esc_html__( 'Requests /v1/info with this node credential to verify connectivity and authentication.', 'ts3pilot' ) . '</p>';
+		$html .= '<button class="button button-small" type="submit">' . esc_html__( 'Run test', 'ts3pilot' ) . '</button></form></details>';
 		return $html;
 	}
 

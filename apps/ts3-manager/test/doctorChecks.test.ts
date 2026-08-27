@@ -91,6 +91,43 @@ test('doctor warns on old node version', async () => {
   assert.equal(node?.severity, 'warn');
 });
 
+test('doctor reports the deployment profile and remote-mode limitation', async () => {
+  const remoteConfig = defaultConfig();
+  remoteConfig.ts3.query.host = '10.0.0.8';
+  const checks = await runDoctorChecks(
+    makeDeps({
+      config: remoteConfig,
+      deployment: {
+        mode: 'remote',
+        kind: 'remote',
+        capabilities: { serverQuery: true, filesystem: false, dockerExec: false, install: false },
+        details: ['ServerQuery host 10.0.0.8 is not loopback'],
+      },
+    }),
+  );
+  const profile = checks.find((check) => check.name === 'deployment profile');
+  assert.equal(profile?.severity, 'ok');
+  assert.ok((profile?.detail ?? '').includes('remote'));
+  const remote = checks.find((check) => check.name === 'remote mode');
+  assert.equal(remote?.severity, 'warn');
+});
+
+test('doctor warns about a missing docker volume path', async () => {
+  const checks = await runDoctorChecks(
+    makeDeps({
+      deployment: {
+        mode: 'docker',
+        kind: 'docker',
+        dockerContainer: 'teamspeak-01',
+        capabilities: { serverQuery: true, filesystem: false, dockerExec: true, install: false },
+        details: ['TeamSpeak container detected'],
+      },
+    }),
+  );
+  const volume = checks.find((check) => check.name === 'docker volume path');
+  assert.equal(volume?.severity, 'warn');
+});
+
 function fsExists(path: string): boolean {
   return existsSync(path);
 }

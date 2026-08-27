@@ -46,10 +46,51 @@ test('adopt analyzer detects structure, parses ini and suggests minimal changes 
     assert.ok(analysis.findings.some((finding) => finding.message.includes('query_ip_whitelist')));
     assert.ok(analysis.recommendations.some((recommendation) => recommendation.includes('ts3-manager backup')));
     assert.equal(analysis.ports.length, 4);
+    assert.ok(['native', 'docker', 'remote', 'unknown'].includes(analysis.deployment.mode));
 
     const after = readdirSync(install).sort();
     assert.deepEqual(after, before);
   } finally {
     cleanupDir(dir);
   }
+});
+
+test('adopt reports docker findings when a container is detected', async () => {
+  const dir = tempDir('adopt-docker');
+  try {
+    const install = join(dir, 'ts3');
+    mkdirSync(install, { recursive: true });
+    const config = defaultConfig();
+    config.ts3.installPath = install;
+    const analysis = await analyzeExistingInstall({
+      config,
+      fileExists: (p) => existsSync(p),
+      readFile: () => undefined,
+      probePort: async () => true,
+      runCommand: async () => ({
+        exitCode: 0,
+        stdout: 'abc123\tteamspeak-01\tteamspeak:latest\t0.0.0.0:9987->9987/udp\n',
+        stderr: '',
+      }),
+    });
+    assert.equal(analysis.deployment.mode, 'docker');
+    assert.ok(analysis.findings.some((finding) => finding.message.includes('Docker')));
+    assert.ok(analysis.recommendations.some((recommendation) => recommendation.includes('数据卷路径')));
+  } finally {
+    cleanupDir(dir);
+  }
+});
+
+test('adopt reports remote findings for a non-loopback query host', async () => {
+  const config = defaultConfig();
+  config.ts3.installPath = '/srv/ts3';
+  config.ts3.query.host = '10.0.0.8';
+  const analysis = await analyzeExistingInstall({
+    config,
+    fileExists: () => true,
+    readFile: () => undefined,
+    probePort: async () => true,
+  });
+  assert.equal(analysis.deployment.mode, 'remote');
+  assert.ok(analysis.findings.some((finding) => finding.message.includes('远程主机')));
 });

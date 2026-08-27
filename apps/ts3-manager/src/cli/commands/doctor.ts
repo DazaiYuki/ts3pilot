@@ -1,12 +1,23 @@
 import { accessSync, constants, existsSync, readFileSync, statSync } from 'node:fs';
 import { runDoctorChecks } from '../../services/doctorChecks.ts';
+import { detectDeployment } from '../../services/deploymentProfile.ts';
 import { probePort } from '../../services/probe.ts';
 import { ServerQueryConnection } from '../../ts3/serverQueryConnection.ts';
+import { runProcess } from '../../system/processRunner.ts';
 import { AppError, ErrorCode } from '../../domain/errors.ts';
 import type { CliContext } from '../context.ts';
 import { printLine } from '../print.ts';
 
 export async function runDoctorCommand(ctx: CliContext): Promise<void> {
+  const deployment = await detectDeployment({
+    config: ctx.config,
+    platform: process.platform,
+    fileExists: (path) => existsSync(path),
+    runCommand: async (command, args) => {
+      const result = await runProcess(command, args, { timeoutMs: 5000 });
+      return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr };
+    },
+  });
   const checks = await runDoctorChecks({
     platform: process.platform,
     nodeVersion: process.version,
@@ -51,8 +62,9 @@ export async function runDoctorCommand(ctx: CliContext): Promise<void> {
     serverQueryAuth: async () => {
       const query = ctx.config.ts3.query;
       if (query.username.length === 0 || query.password.length === 0) return undefined;
+      const host = query.host.trim().length > 0 ? query.host : '127.0.0.1';
       const connection = new ServerQueryConnection({
-        host: '127.0.0.1',
+        host,
         port: query.rawPort,
         username: query.username,
         password: query.password,
@@ -68,6 +80,7 @@ export async function runDoctorCommand(ctx: CliContext): Promise<void> {
       }
     },
     providerAvailable: () => ctx.services.isAvailable(),
+    deployment,
   });
 
   for (const check of checks) {

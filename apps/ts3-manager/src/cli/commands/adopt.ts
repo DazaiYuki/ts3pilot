@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { analyzeExistingInstall } from '../../services/adoptAnalyzer.ts';
+import { runProcess } from '../../system/processRunner.ts';
 import { probePort } from '../../services/probe.ts';
 import type { CliContext } from '../context.ts';
 import { printLine } from '../print.ts';
@@ -16,10 +17,22 @@ export async function runAdoptCommand(ctx: CliContext): Promise<void> {
       }
     },
     probePort: (host, port) => probePort(host, port, 1500),
+    runCommand: async (command, args) => {
+      const result = await runProcess(command, args, { timeoutMs: 5000 });
+      return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr };
+    },
   });
 
   printLine('Adopt analysis (read-only; nothing is modified):');
   printLine(`install path: ${analysis.installPath || '(not configured)'}`);
+  printLine(
+    `deployment: ${analysis.deployment.mode} (serverQuery=${analysis.deployment.capabilities.serverQuery ? 'yes' : 'no'}, filesystem=${
+      analysis.deployment.capabilities.filesystem ? 'yes' : 'no'
+    })`,
+  );
+  for (const detail of analysis.deployment.details) {
+    printLine(`  - ${detail}`);
+  }
   printLine(`detected: ${analysis.found.join(', ') || '(none)'}`);
   printLine(`missing: ${analysis.missing.join(', ') || '(none)'}`);
   if (analysis.optionalFound.length > 0) {

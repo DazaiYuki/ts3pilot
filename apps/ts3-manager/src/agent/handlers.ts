@@ -1,5 +1,6 @@
 import { hasCapability } from '../domain/capabilities.ts';
 import { AppError, ErrorCode } from '../domain/errors.ts';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { HealthInfo } from '../domain/models.ts';
 import {
@@ -22,6 +23,8 @@ import type { ChallengeStore } from '../identity/challengeStore.ts';
 import type { Logger } from '../logging/logger.ts';
 import { pairingMatches } from '../security/pairing.ts';
 import { randomToken, sha256Hex } from '../security/secrets.ts';
+import { detectDeployment, type DeploymentProfile } from '../services/deploymentProfile.ts';
+import { runProcess } from '../system/processRunner.ts';
 import type { ServiceManager } from '../system/serviceManager.ts';
 import { createBackupArchive, DEFAULT_BACKUP_INCLUDES, restoreBackupArchive } from '../system/backupEngine.ts';
 import type { TeamSpeakClient, Ts3FeatureValue } from '../ts3/teamSpeakClient.ts';
@@ -69,7 +72,34 @@ export function healthHandler(ctx: HandlerContext): HandlerResult {
   return { status: 200, data };
 }
 
-export function infoHandler(ctx: HandlerContext): HandlerResult {
+const deploymentCache = new Map<string, { at: number; profile: DeploymentProfile }>();
+const DEPLOYMENT_CACHE_TTL_MS = 30_000;
+
+async function cachedDeployment(ctx: HandlerContext): Promise<DeploymentProfile> {
+  const hit = deploymentCache.get(ctx.config.nodeId);
+  if (hit !== undefined && Date.now() - hit.at < DEPLOYMENT_CACHE_TTL_MS) {
+    return hit.profile;
+  }
+  const profile = await detectDeployment({
+    config: ctx.config,
+    platform: process.platform,
+    fileExists: (path) => existsSync(path),
+    runCommand: async (command, args) => {
+      const result = await runProcess(command, args, { timeoutMs: 3000 });
+      return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr };
+    },
+  });
+  deploymentCache.set(ctx.config.nodeId, { at: Date.now(), profile });
+  return profile;
+}
+
+export async function infoHandler(ctx: HandlerContext): Promise<HandlerResult> {
+  let deployment: DeploymentProfile | undefined;
+  try {
+    deployment = await cachedDeployment(ctx);
+  } catch {
+    // deployment is best-effort metadata; never fail /v1/info because of it
+  }
   return {
     status: 200,
     data: {
@@ -80,6 +110,7 @@ export function infoHandler(ctx: HandlerContext): HandlerResult {
       systemProvider: ctx.services.providerName,
       ts3Provider: ctx.ts3.kind,
       remoteMode: ctx.config.agent.remoteMode,
+      deployment: deployment ?? { mode: 'unknown', kind: 'unknown', capabilities: { serverQuery: false, filesystem: false, dockerExec: false, install: false }, details: ['deployment detection unavailable'] },
       listening: { host: ctx.config.agent.host, port: ctx.config.agent.port },
     },
   };

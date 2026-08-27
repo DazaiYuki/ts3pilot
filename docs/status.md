@@ -1,6 +1,6 @@
 # 项目状态（STATUS.md）
 
-生成时间：2026-08-26（开发环境：Windows 11 + Node 24.15 + PHP 8.5）
+生成时间：2026-08-28（开发环境：Windows 11 + Node 24.15 + PHP 8.5）
 
 ## 1. 当前验证结果（全部绿色）
 
@@ -10,8 +10,8 @@
 | `composer install`（WP 插件开发依赖） | 通过（30 包） |
 | ESLint（ts3-manager src/test） | 通过，0 warning |
 | `tsc -p tsconfig.json`（strict，含测试） | 通过 |
-| `node --test`（ts3-manager） | 89/89 通过 |
-| PHPUnit（WP 插件） | 44 测试 / 117 断言通过 |
+| `node --test`（ts3-manager） | 115/115 通过 |
+| PHPUnit（WP 插件） | 52 测试 / 137 断言通过 |
 | PHP lint（全部 PHP 文件） | 33/33 通过 |
 | PHPCS（WordPress-Extra，含豁免项） | 通过 |
 | `tsc -p tsconfig.build.json`（dist 产物） | 通过，`dist/cli/index.js` 可运行 |
@@ -30,7 +30,7 @@
 - Agent `/v1` API：health/info/status/clients/channels（list/create/edit/
   delete/move）/kick/ban/move/poke/system start/stop/restart/status/pair/
   rotate-secret/unpair/disable/identity challenge register；maintenance
-  三端点诚实返回 501。
+  backup/restore 真实实现，update 端点诚实返回 501。
 - 安全体系：HMAC-SHA256 v1（canonical string + 恒定时间比较）、timestamp 窗口、
   nonce 单次消费、token-bucket 限流、body 上限、无 CORS、错误 envelope、
   capability 模型（高风险能力默认不授予）、配对码一次性/15 分钟/哈希存储。
@@ -49,14 +49,21 @@
   10080/10443）、安装后自动生成加固 systemd unit；Windows/开发模式走
   Mock（只打印步骤并写 EULA 标记），并有参数校验/URL/Mock/防火墙/校验和
   契约测试。
-- 自更新（本轮）：`ts3pilot update [check|self]` — GitHub latest 版本对比、
-  ghproxy 镜像加速（默认开，`--no-mirror` 关闭）、/tmp 下载解压、
-  rm→move 原子替换（避免 Text file busy）、绿色成功提示；已接入 TUI
-  菜单 [7]。
+- 自更新（v0.3.0）：`ts3pilot update [check|self]` — GitHub latest 版本对比、
+  下载前 gzip magic 校验、镜像回退链（ghproxy → gh-proxy → 直连，
+  `TS3PILOT_GH_MIRROR` 可覆盖）、/tmp 解压、**原子替换 + 自动回滚**
+  （旧二进制保留到新二进制通过 `version` 冒烟测试；失败自动恢复，
+  避免 Text file busy 与半替换状态）、绿色成功提示；已接入 TUI 菜单 [7]。
+- 部署形态识别（v0.3.0）：`ts3.deployment.kind`（auto/native/docker/remote）
+  自动检测 + `ts3.query.host`（默认 127.0.0.1）支持远程 ServerQuery；
+  `adopt`/`doctor` 输出能力矩阵（serverQuery/filesystem/install），
+  Docker 与远程节点给出针对性建议而非误报。
 - Adopt 修正：移除 `ts3server_linux_amd64` 检测；`ts3server.ini`、
   `licensekey.dat`、`.ts3server.license` 改为可选（不再误报）。
 - TUI 重构：标题改为 `=== TS3Pilot 控制台 ===`，zh 菜单纯中文；新增
-  [8] 配置开机自启与守护进程（systemd 生成）、[9] 更改控制台语言（持久化）。
+  [8] 配置开机自启与守护进程（systemd 生成）、[9] 更改控制台语言（持久化）；
+  v0.3.0 起语言菜单在任何当前语言下都保持双语（`[1] English (英文)` /
+  `[2] 简体中文 (中文)` + 双语提示与确认），切错也能切回。
 - 分发（本轮）：`scripts/install.sh` 一键安装脚本（检测架构 → GitHub
   Releases 拉取最新 **Linux 单文件二进制**（pkg 打包，服务器无需 Node.js）
   → `/opt/ts3pilot` + `/usr/local/bin/ts3pilot` 软链接，全程零系统包安装）；
@@ -114,7 +121,13 @@
 - 后台：Dashboard、Clients（kick/poke/move + admin.js 实时刷新）、Channels
   （完整频道树 + create/edit/move/delete + 二次确认）、Users/Identity
   （绑定状态 + 一次性挑战码 + 状态流转）、Maintenance（restart）、Settings
-  （Settings API + 配对向导 + 频道/主题选项）、Diagnostics（审计日志）。
+  （Settings API + 配对向导 + 节点注册表 + **每节点连接测试** + 频道/主题
+  选项）、Diagnostics、**Audit Log 只读审计页（v0.3.0）**。
+- 插件自更新（v0.3.0）：`GitHubUpdater` 接入 WordPress 标准更新 transient，
+  从项目 GitHub Releases 拉取最新 `ts3pilot-wp-v*.zip` 并在后台“插件”页
+  显示更新（无需上架 wordpress.org）；`Update URI:` 头 + HTTPS GitHub 资源
+  白名单 + 6 小时缓存；/v1/info 新增 deployment 形态，节点连接测试会显示
+  native/docker/remote。
 - 前台：`[ts3_status]` 支持主题（auto/light/dark）、可折叠频道树、加入链接
   策略；Gutenberg Block 同步支持；全部数据经服务端 Transient 缓存。
 - 身份模块：Mapping 状态机（unbound/pending/verified/revoked）+ 一次性
@@ -131,9 +144,9 @@
 | WebQuery 真实请求 | 门控 | 端点映射需对照官方文档验证后打开 `verified=true` |
 | ServerQuery 真实联调 | 需验证 | 协议契约测试已通过；与真实 TS3 的最终核对仍待 Docker/实机 |
 | install 执行管线 | 已实现 | Linux 真实执行（下载/解压/防火墙/systemd），官方文件名模式需在发布前核对 |
-| update 执行管线 | 计划模式 | 需已验证官方源（URL+sha256）后实现下载/校验/替换/回滚 |
+| TS3 server.update 管线 | 501 | CLI 自更新已实现（下载/校验/原子替换/回滚）；TS3 服务端更新仍需已验证官方源（URL+sha256） |
 | 服务器配置读写 | capability 已预留 | 尚未开放端点 |
-| Bot 私聊验证通道 / away 字段 / 加入链接生成 / 角色同步 | 预留 | `identity.verify.field` 已支持 nickname；Bot 通道与角色同步后续实现 |
+| Bot 私聊验证通道 / away 字段 / 加入链接生成 / 角色同步 | 预留 | `identity.verify.fields` 已支持 client_description / away / nickname；Bot 通道与角色同步后续实现 |
 | 多节点 | 已实现 | WP NodeRegistry + 切换器 + 每节点独立凭据与路由隔离 |
 | Gutenberg React 编辑器 UI | 基础动态块 | 标准 block 结构已建，完整 React UI 为后续 |
 
@@ -164,5 +177,6 @@
 1. 在 Linux 主机跑 `doctor` + systemd 冒烟，修复 provider 细节。
 2. 对照官方文档验证 WebQuery 端点并补集成测试，打开 `verified=true`。
 3. 用 Docker 沙盒（官方镜像验证后）做真实 ServerQuery/WebQuery 联调。
-4. 实现 install/update 执行管线（校验源 + 回滚）与 Agent maintenance 端点。
+4. 实现 TS3 服务端 update 管线（校验官方源 URL + sha256 + 回滚），
+   替换 maintenance update 的 501 占位。
 5. 实现 Channels/Server 管理、身份 Bot 通道与加入链接生成。

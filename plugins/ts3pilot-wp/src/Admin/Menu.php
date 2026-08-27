@@ -99,6 +99,16 @@ final class Menu {
 						( new DiagnosticsPage( $repository ) )->render();
 					}
 				);
+				add_submenu_page(
+					'ts3pilot',
+					'Audit Log',
+					'Audit Log',
+					'manage_options',
+					'ts3pilot-audit',
+					static function (): void {
+						( new AuditLogPage() )->render();
+					}
+				);
 			}
 		);
 	}

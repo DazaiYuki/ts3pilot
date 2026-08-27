@@ -17,6 +17,9 @@ import {
 export type RunMode = 'development' | 'local-integration' | 'production';
 export type SystemProvider = 'auto' | 'systemd' | 'script' | 'mock';
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+export type DeploymentKind = 'auto' | 'native' | 'docker' | 'remote';
+
+export const DEPLOYMENT_KINDS: readonly DeploymentKind[] = ['auto', 'native', 'docker', 'remote'];
 
 export interface Ts3WebQueryConfig {
   enabled: boolean;
@@ -30,11 +33,17 @@ export interface Ts3WebQueryConfig {
 }
 
 export interface Ts3QueryConfig {
+  host: string;
   rawPort: number;
   sshPort: number;
   username: string;
   password: string;
   webQuery: Ts3WebQueryConfig;
+}
+
+export interface Ts3DeploymentConfig {
+  kind: DeploymentKind;
+  dockerContainer: string;
 }
 
 export interface Ts3Config {
@@ -43,6 +52,7 @@ export interface Ts3Config {
   startScript: string;
   voicePort: number;
   fileTransferPort: number;
+  deployment: Ts3DeploymentConfig;
   query: Ts3QueryConfig;
   install: Ts3InstallConfig;
 }
@@ -131,12 +141,17 @@ export function defaultConfig(overrides: Partial<AppConfig> = {}): AppConfig {
       startScript: 'ts3server_startscript.sh',
       voicePort: PORT_VOICE,
       fileTransferPort: PORT_FILE_TRANSFER,
+      deployment: {
+        kind: 'auto',
+        dockerContainer: '',
+      },
       install: {
         sourceUrl: '',
         sha256: '',
         verified: false,
       },
       query: {
+        host: '127.0.0.1',
         rawPort: PORT_QUERY_RAW,
         sshPort: PORT_QUERY_SSH,
         username: '',
@@ -202,6 +217,7 @@ export function validateConfig(value: unknown): AppConfig {
   const agentRecord = expectRecord(record.agent ?? {}, 'config.agent');
   const ts3Record = expectRecord(record.ts3 ?? {}, 'config.ts3');
   const queryRecord = expectRecord(ts3Record.query ?? {}, 'config.ts3.query');
+  const deploymentRecord = expectRecord(ts3Record.deployment ?? {}, 'config.ts3.deployment');
   const installRecord = expectRecord(ts3Record.install ?? {}, 'config.ts3.install');
   const systemRecord = expectRecord(record.system ?? {}, 'config.system');
   const loggingRecord = expectRecord(record.logging ?? {}, 'config.logging');
@@ -235,12 +251,17 @@ export function validateConfig(value: unknown): AppConfig {
       startScript: expectString(ts3Record.startScript ?? 'ts3server_startscript.sh', 'config.ts3.startScript', { max: 512 }),
       voicePort: expectNumber(ts3Record.voicePort ?? PORT_VOICE, 'config.ts3.voicePort', { integer: true, min: 1, max: 65535 }),
       fileTransferPort: expectNumber(ts3Record.fileTransferPort ?? PORT_FILE_TRANSFER, 'config.ts3.fileTransferPort', { integer: true, min: 1, max: 65535 }),
+      deployment: {
+        kind: expectEnum(deploymentRecord.kind ?? 'auto', 'config.ts3.deployment.kind', DEPLOYMENT_KINDS),
+        dockerContainer: expectString(deploymentRecord.dockerContainer ?? '', 'config.ts3.deployment.dockerContainer', { max: 256 }),
+      },
       install: {
         sourceUrl: expectString(installRecord.sourceUrl ?? '', 'config.ts3.install.sourceUrl', { max: 1024 }),
         sha256: expectString(installRecord.sha256 ?? '', 'config.ts3.install.sha256', { max: 128 }),
         verified: expectBoolean(installRecord.verified ?? false, 'config.ts3.install.verified'),
       },
       query: {
+        host: expectString(queryRecord.host ?? '127.0.0.1', 'config.ts3.query.host', { min: 1, max: 253 }),
         rawPort: expectNumber(queryRecord.rawPort ?? PORT_QUERY_RAW, 'config.ts3.query.rawPort', { integer: true, min: 1, max: 65535 }),
         sshPort: expectNumber(queryRecord.sshPort ?? PORT_QUERY_SSH, 'config.ts3.query.sshPort', { integer: true, min: 1, max: 65535 }),
         username: expectString(queryRecord.username ?? '', 'config.ts3.query.username', { max: 256 }),

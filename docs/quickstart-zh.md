@@ -181,11 +181,21 @@ ts3-manager backup --dest /srv/backups/ts3-$(date +%F).tar.gz
 ts3-manager restore --backup /srv/backups/ts3-xxx.tar.gz --dry-run
 ts3-manager restore --backup /srv/backups/ts3-xxx.tar.gz --force
 ts3-manager logs --lines 100
+ts3-manager update          # 检查并自更新 CLI（二进制版，无需重新安装）
+ts3-manager update check    # 只检查最新版本，不下载
 ts3-manager api status
 ts3-manager identity worker once
 ```
 
 ## 9. 常见问题 FAQ
+
+### Q0：如何升级 ts3pilot 本身？
+
+- 在服务器上执行 `ts3pilot update`（或控制台菜单 [7]）。它会自动从
+  GitHub Releases 获取最新版，校验 gzip 后原子替换并做冒烟测试，失败自动
+  回滚旧版本；国内网络会自动走镜像回退链。
+- 只想看看有没有新版：`ts3pilot update check`。
+- 完全离线时，也可以手动下载新版 tar.gz 覆盖 `/opt/ts3pilot/ts3pilot`。
 
 ### Q1：`doctor` 显示端口 9987/10011 是 closed
 

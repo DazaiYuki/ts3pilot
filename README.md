@@ -109,6 +109,12 @@ TeamSpeak permissions are **completely independent**.
 - HMAC-SHA256 v1 + timestamp window + nonce replay protection; pairing codes are
   single-use with a 15-minute TTL.
 - Per-node credentials are isolated; restore/extract has a path sandbox.
+- Deployment-aware: `adopt` / `doctor` detect native, Docker and remote TS3
+  setups and show which operations are available in each mode.
+- Atomic self-update: the CLI verifies and smoke-tests the new binary before
+  replacing the old one (automatic rollback on failure); the WordPress plugin
+  checks GitHub Releases and can be updated from the WP dashboard without a
+  wordpress.org listing.
 
 ## Docs
 

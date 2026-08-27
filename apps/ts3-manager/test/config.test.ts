@@ -8,8 +8,25 @@ test('default config validates', () => {
   assert.equal(validated.mode, 'development');
   assert.equal(validated.agent.port, 17880);
   assert.equal(validated.agent.host, '127.0.0.1');
+  assert.equal(validated.ts3.query.host, '127.0.0.1');
+  assert.equal(validated.ts3.deployment.kind, 'auto');
   assert.equal(validated.agent.capabilities.includes('server.update'), false);
   assert.equal(validated.agent.capabilities.includes('ts3.clients.kick'), true);
+});
+
+test('validateConfig accepts deployment and query host overrides', () => {
+  const config = defaultConfig();
+  config.ts3.query.host = '10.0.0.8';
+  config.ts3.deployment.kind = 'remote';
+  const validated = validateConfig(JSON.parse(JSON.stringify(config)) as unknown);
+  assert.equal(validated.ts3.query.host, '10.0.0.8');
+  assert.equal(validated.ts3.deployment.kind, 'remote');
+});
+
+test('validateConfig rejects an unknown deployment kind', () => {
+  const config = defaultConfig();
+  (config.ts3.deployment as { kind: string }).kind = 'k8s';
+  assert.throws(() => validateConfig(JSON.parse(JSON.stringify(config)) as unknown));
 });
 
 test('validateConfig rejects unknown capabilities', () => {

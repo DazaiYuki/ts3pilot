@@ -2,6 +2,43 @@
 
 All notable changes to TS3 Community Operations Suite are documented here.
 
+## [0.3.0] - 2026-08-28
+
+### Added
+
+- TUI language menu is now fully bilingual no matter which language is active
+  (`[1] English (英文)` / `[2] 简体中文 (中文)` + bilingual prompt), so users who
+  switch by accident can always switch back. Language switches show a
+  confirmation in both languages.
+- Self-update hardening (`ts3pilot update`): downloaded archives are verified
+  as gzip before extraction; binary replacement is atomic with automatic
+  rollback (the old binary is kept until the new one passes a `version` smoke
+  test); downloads fall back across two mirrors then direct GitHub, and
+  `TS3PILOT_GH_MIRROR` can override the mirror list.
+- Deployment profile detection: the CLI now recognises `native`, `docker` and
+  `remote` TS3 deployments (`ts3.deployment.kind` / auto-detection) and exposes
+  a capability matrix (serverQuery / filesystem / install). Docker and remote
+  nodes get explicit guidance in `adopt` and `doctor` instead of false alarms.
+- Remote ServerQuery support: new `ts3.query.host` config (default
+  `127.0.0.1`); ServerQuery client, doctor and adopt now honour it.
+- WordPress: per-node "Test connection" action (authenticated `/v1/info`
+  probe, nonce + `manage_options`), view-only Audit Log page (bounded ring
+  buffer, escaping everywhere), and fixed the plugin version constant that was
+  stuck at 0.1.0.
+- WordPress updates: `GitHubUpdater` feeds the standard WordPress update
+  transients from the project's GitHub Releases page, so the plugin can be
+  updated from the WP admin dashboard without being listed on wordpress.org
+  (adds `Update URI:` header; package URL restricted to HTTPS GitHub assets;
+  release metadata cached 6 h).
+- Agent `/v1/info` now reports the detected deployment profile
+  (`native`/`docker`/`remote`/`unknown` + capability flags), so the WP node
+  test shows how the TS3 instance is deployed.
+
+### Changed
+
+- `apps/ts3-manager/src/cli/index.ts` now awaits async commands (`install`,
+  `update`) so errors surface through the normal error path.
+
 ## [0.2.0] - 2026-08-27
 
 ### Changed

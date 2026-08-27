@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import type { AppConfig } from '../domain/schemas.ts';
+import { detectDeployment, type DeploymentProfile } from './deploymentProfile.ts';
 
 export interface AdoptFinding {
   kind: 'info' | 'warn' | 'error';
@@ -14,6 +15,7 @@ export interface PortProbe {
 
 export interface AdoptAnalysis {
   installPath: string;
+  deployment: DeploymentProfile;
   found: string[];
   missing: string[];
   optionalFound: string[];
@@ -28,6 +30,7 @@ export interface AdoptDependencies {
   fileExists(path: string): boolean;
   readFile(path: string): string | undefined;
   probePort(host: string, port: number): Promise<boolean>;
+  runCommand?(command: string, args: readonly string[]): Promise<{ exitCode: number; stdout: string; stderr: string }>;
 }
 
 const EXPECTED_FILES = [
@@ -51,6 +54,12 @@ const INI_KEYS = ['query_port', 'query_ip_whitelist', 'filetransfer_port', 'voic
 
 export async function analyzeExistingInstall(deps: AdoptDependencies): Promise<AdoptAnalysis> {
   const installPath = deps.config.ts3.installPath;
+  const deployment = await detectDeployment({
+    config: deps.config,
+    platform: process.platform,
+    fileExists: deps.fileExists,
+    runCommand: deps.runCommand ?? (async () => ({ exitCode: 127, stdout: '', stderr: 'no command runner' })),
+  });
   const found: string[] = [];
   const missing: string[] = [];
   for (const name of EXPECTED_FILES) {
@@ -64,14 +73,15 @@ export async function analyzeExistingInstall(deps: AdoptDependencies): Promise<A
 
   const ini = deps.config.ts3.installPath.length > 0 ? parseIni(deps.readFile(join(deps.config.ts3.installPath, 'ts3server.ini'))) : {};
   const ports: PortProbe[] = [];
-  const portMap: Array<[string, number]> = [
-    ['voice', deps.config.ts3.voicePort],
-    ['file transfer', deps.config.ts3.fileTransferPort],
-    ['serverquery raw', deps.config.ts3.query.rawPort],
-    ['webquery http', deps.config.ts3.query.webQuery.httpPort],
+  const queryHost = deployment.mode === 'remote' ? deps.config.ts3.query.host : '127.0.0.1';
+  const portMap: Array<[string, number, string]> = [
+    ['voice', deps.config.ts3.voicePort, '127.0.0.1'],
+    ['file transfer', deps.config.ts3.fileTransferPort, '127.0.0.1'],
+    ['serverquery raw', deps.config.ts3.query.rawPort, queryHost],
+    ['webquery http', deps.config.ts3.query.webQuery.httpPort, queryHost],
   ];
-  for (const [name, port] of portMap) {
-    ports.push({ port, name, open: await deps.probePort('127.0.0.1', port) });
+  for (const [name, port, host] of portMap) {
+    ports.push({ port, name, open: await deps.probePort(host, port) });
   }
 
   const findings: AdoptFinding[] = [];
@@ -80,7 +90,25 @@ export async function analyzeExistingInstall(deps: AdoptDependencies): Promise<A
   if (installPath.length === 0 || !deps.fileExists(installPath)) {
     findings.push({ kind: 'error', message: 'ts3.installPath is not set or does not exist' });
     recommendations.push('配置 ts3.installPath 指向现有 TS3 安装目录后重新运行 adopt。');
-    return { installPath, found, missing, optionalFound, ini, ports, findings, recommendations };
+    return { installPath, deployment, found, missing, optionalFound, ini, ports, findings, recommendations };
+  }
+
+  if (deployment.mode === 'docker') {
+    findings.push({
+      kind: 'info',
+      message: `检测到 Docker 容器中的 TS3（${deployment.dockerContainer ?? 'unknown'}）；ServerQuery 操作可用，文件系统操作需将宿主卷路径写入 ts3.installPath`,
+    });
+    recommendations.push(
+      'Docker 部署：把宿主上的 TS3 数据卷路径（如 /opt/ts3/data）设为 ts3.installPath，以便 backup/logs 直接读取文件。',
+    );
+  } else if (deployment.mode === 'remote') {
+    findings.push({
+      kind: 'warn',
+      message: `TS3 位于远程主机（query.host=${deps.config.ts3.query.host}）；查询类操作可用，install/backup/restore/systemd 在本机不可用`,
+    });
+    recommendations.push(
+      '远程模式：Agent 仍作为受控控制面管理查询类操作；备份/恢复请在 TS3 所在主机运行 ts3pilot。',
+    );
   }
 
   if (!found.includes('ts3server.sqlitedb')) {
@@ -110,7 +138,7 @@ export async function analyzeExistingInstall(deps: AdoptDependencies): Promise<A
   );
   findings.push({ kind: 'info', message: `发现 ${found.length} 个预期文件，缺失 ${missing.length} 个（缺失项可能正常）` });
 
-  return { installPath, found, missing, optionalFound, ini, ports, findings, recommendations };
+  return { installPath, deployment, found, missing, optionalFound, ini, ports, findings, recommendations };
 }
 
 function parseIni(content: string | undefined): Record<string, string> {

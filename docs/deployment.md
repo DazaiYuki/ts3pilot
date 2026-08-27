@@ -67,6 +67,34 @@ Agent 端口默认只监听 loopback。
 
 `api status` 显示当前模式；`api disable` 停止监听并吊销凭据。
 
+## 3.5 部署形态识别（Deployment Profiles）
+
+ts3pilot 会识别 TS3 实例相对当前主机的部署方式，并在 `adopt` / `doctor` 中
+显示能力矩阵，避免对 Docker 或远程实例给出错误的文件系统类建议。
+
+| 形态 | 判定方式 | serverQuery | filesystem（备份/恢复/日志） | install / systemd |
+| --- | --- | --- | --- | --- |
+| native | `ts3.installPath` 下存在 `ts3server` 二进制 | ✔ | ✔ | ✔ |
+| docker | `docker ps` 检测到 TeamSpeak 容器，或显式配置 `ts3.deployment.dockerContainer` | ✔（走映射的 Query 端口） | ✘（需把宿主数据卷路径设为 `ts3.installPath`） | ✘ |
+| remote | `ts3.query.host` 非回环地址（如 `10.0.0.8`） | ✔（远程 Query） | ✘ | ✘ |
+| unknown | 尚未检测到任何信号（全新/开发 mock 环境） | ✘ | ✘ | ✘ |
+
+配置项：
+
+```json
+{
+  "ts3": {
+    "query": { "host": "127.0.0.1" },
+    "deployment": { "kind": "auto", "dockerContainer": "" }
+  }
+}
+```
+
+- `kind` 可选 `auto`（自动检测，默认）、`native`、`docker`、`remote`。
+- 远程/容器场景说明：ServerQuery 类操作（状态、在线列表、频道、Kick 等）完全
+  可用；安装、备份、恢复、systemd 生成等文件系统类操作仅在 TS3 所在主机（或
+  Docker 宿主卷路径已配置）时可用。
+
 ## 4. WordPress 部署
 
 1. 上传 `ts3pilot-wp` 目录到 `wp-content/plugins/` 并激活。
