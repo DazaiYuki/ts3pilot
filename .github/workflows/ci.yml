@@ -121,8 +121,8 @@ jobs:
   release:
     name: release packaging
     needs: verify
-    # Older runner => older build-time glibc baseline. Combined with the
-    # node18-linuxstatic-x64 pkg target, the produced binary runs on CentOS 7/8.
+    # Older runner => older build-time glibc baseline. Combined with a static
+    # pkg target (probed in scripts/bundle.mjs), the binary runs on CentOS 7/8.
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -142,6 +142,10 @@ jobs:
           tar -tzf dist/release/ts3pilot-linux-x64-v*.tar.gz | head -n 5
           echo "--- WP zip (entry count) ---"
           unzip -l dist/release/ts3pilot-wp-v*.zip | tail -n 2
+      - name: Verify binary runs on RHEL8 (glibc 2.28)
+        run: |
+          test -f apps/ts3-manager/dist/pkg/ts3pilot-linux-x64
+          docker run --rm -v "$PWD/apps/ts3-manager/dist/pkg:/pkg:ro" centos:stream8 /pkg/ts3pilot-linux-x64 version
       - uses: actions/upload-artifact@v4
         with:
           name: ts3pilot-release
@@ -153,7 +157,7 @@ jobs:
   github-release:
     name: github release (tags)
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: verify
+    needs: [verify, release]
     runs-on: ubuntu-22.04
     permissions:
       contents: write

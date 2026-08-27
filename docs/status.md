@@ -146,8 +146,10 @@
 - 本沙箱无外网：`@yao-pkg/pkg` 无法本地安装，Linux 单文件二进制由
   GitHub Actions（release job）构建并在打包后校验产物；本地
   `npm run release` 需要网络以拉取 pkg 基础二进制。
-- glibc 兼容：Release 构建改用 `ubuntu-22.04` + `node18-linuxstatic-x64`
-  静态目标，产物不依赖宿主机 glibc/libstdc++（CentOS 7/8 可直接运行）。
+- glibc 兼容：Release 构建在 `ubuntu-22.04` 上自动探测可用的
+  `*-linuxstatic-x64` pkg 目标，并在 `centos:stream8`（glibc 2.28）容器内
+  实机校验二进制（硬门禁，不满足即不发版）；目标为 2027 年仍在服务期内的
+  RHEL8 系系统。
 
 ## 6. 下一步建议
 
