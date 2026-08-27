@@ -147,9 +147,9 @@
   GitHub Actions（release job）构建并在打包后校验产物；本地
   `npm run release` 需要网络以拉取 pkg 基础二进制。
 - glibc 兼容：Release 构建在 `ubuntu-22.04` 上自动探测可用的
-  `*-linuxstatic-x64` pkg 目标，并在 `centos:stream8`（glibc 2.28）容器内
-  实机校验二进制（硬门禁，不满足即不发版）；目标为 2027 年仍在服务期内的
-  RHEL8 系系统。
+  `*-linuxstatic-x64` pkg 目标，并在 `rockylinux:9`（glibc 2.34，与
+  CentOS Stream 9 同基线）容器内实机校验二进制（硬门禁，不满足即不发版）；
+  目标为 2027 年仍在服务期内的 RHEL9 系系统。
 
 ## 6. 下一步建议
 

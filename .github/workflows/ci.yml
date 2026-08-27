@@ -142,10 +142,12 @@ jobs:
           tar -tzf dist/release/ts3pilot-linux-x64-v*.tar.gz | head -n 5
           echo "--- WP zip (entry count) ---"
           unzip -l dist/release/ts3pilot-wp-v*.zip | tail -n 2
-      - name: Verify binary runs on RHEL8 (glibc 2.28)
+      - name: Verify binary runs on RHEL9 (glibc 2.34)
         run: |
           test -f apps/ts3-manager/dist/pkg/ts3pilot-linux-x64
-          docker run --rm -v "$PWD/apps/ts3-manager/dist/pkg:/pkg:ro" centos:stream8 /pkg/ts3pilot-linux-x64 version
+          # Target: CentOS Stream 9 / RHEL9 (glibc 2.34). Rocky Linux 9 shares
+          # the same baseline and is supported until 2032.
+          docker run --rm -v "$PWD/apps/ts3-manager/dist/pkg:/pkg:ro" rockylinux:9 /pkg/ts3pilot-linux-x64 version
       - uses: actions/upload-artifact@v4
         with:
           name: ts3pilot-release

@@ -35,9 +35,10 @@ All notable changes to TS3 Community Operations Suite are documented here.
   the installer never touches system packages.
 - Compatibility: release builds now run on `ubuntu-22.04` and target
   a self-probing static pkg target (`node18/20/22-linuxstatic-x64`); the CI
-  `release` job runs the binary inside a `centos:stream8` container (glibc
-  2.28) as a hard gate, so a build that still requires newer glibc cannot be
-  published. Fixes `GLIBC_2.38` / `GLIBCXX_3.4.30` errors on RHEL8-likes.
+  `release` job runs the binary inside a `rockylinux:9` container (glibc 2.34,
+  same baseline as CentOS Stream 9) as a hard gate, so a build that still
+  requires newer glibc cannot be published. Fixes `GLIBC_2.38` /
+  `GLIBCXX_3.4.30` errors on RHEL9 / CentOS Stream 9.
 
 ## [0.1.0] - 2026-08-26
 
