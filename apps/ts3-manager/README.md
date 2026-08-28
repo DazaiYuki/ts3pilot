@@ -14,3 +14,5 @@ See the repository root `README.md` and `docs/architecture.md` for full document
   license terms.
 - This package's code is licensed under Apache-2.0, which is separate from any
   TeamSpeak software license.
+- The distributed `ts3pilot` binary targets **Linux x64**; on other platforms,
+  run from source (Node.js >= 22.6) instead.

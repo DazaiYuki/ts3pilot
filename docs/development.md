@@ -109,7 +109,9 @@ npm publish dist/release/ts3-manager-npm-v0.3.0.tgz
 
 注意事项：
 
-- 包声明 `"os": ["linux"]`、`"cpu": ["x64"]`，非 Linux x64 环境安装会提示
-  不支持的平台（符合设计）。
+- 发布产物是 Linux x64 单文件二进制，Linux 服务器 `npm i -g` 即可运行；
+  其他平台安装后无法执行该二进制（源码运行需 Node ≥ 22.6）。不在包上声明
+  `os/cpu` 限制，是为了保证 Windows 开发机与 CI 能正常 `npm install`
+  工作区依赖。
 - 发布后 npmmirror 数分钟内同步；版本号以 `apps/ts3-manager/package.json`
   与 `scripts/latest.json` 为准，升级版本时两者要同步更新。

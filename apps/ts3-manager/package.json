@@ -4,12 +4,6 @@
   "description": "Independent, local-first TeamSpeak 3 server management CLI and controlled Host Control Plane agent (not affiliated with TeamSpeak Systems GmbH).",
   "type": "module",
   "license": "Apache-2.0",
-  "os": [
-    "linux"
-  ],
-  "cpu": [
-    "x64"
-  ],
   "bin": {
     "ts3pilot": "ts3pilot"
   },

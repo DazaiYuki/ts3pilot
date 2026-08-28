@@ -6,6 +6,11 @@ All notable changes to TS3 Community Operations Suite are documented here.
 
 ### Fixed
 
+- Removed the `os`/`cpu` platform restrictions from `@ts3pilot/ts3-manager`'s
+  package.json: they broke `npm install` on Windows development machines and
+  the windows-verify CI job (EBADPLATFORM). The published artifact is still a
+  Linux x64 standalone binary; platform targeting is documented instead of
+  enforced at install time.
 - WordPress identity verification instructions now match the agent's verified
   field priority: users are told to put the one-time code in the TeamSpeak
   client **description** or **away message** first (nickname is only a last
