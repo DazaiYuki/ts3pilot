@@ -1,6 +1,6 @@
 {
   "name": "ts3pilot-suite",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "TS3 Community Operations Suite — local-first TeamSpeak 3 management toolchain (CLI/Agent) with an optional WordPress control plane.",
   "type": "module",

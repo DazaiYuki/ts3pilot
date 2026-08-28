@@ -59,7 +59,7 @@ final class Assets {
 					'verified'           => __( '绑定成功', 'ts3pilot' ),
 					'waiting'            => __( '等待自动核验…', 'ts3pilot' ),
 					'instructionsPrefix' => __( '验证码', 'ts3pilot' ),
-					'instructionsSuffix' => __( '：请在 TeamSpeak 中把昵称改为包含该验证码的文本，等待自动核验。', 'ts3pilot' ),
+					'instructionsSuffix' => __( '：请在 TeamSpeak 客户端中，把验证码填入「个人描述（Description）」或「离开消息（Away Message）」（昵称为最后手段），等待自动核验。', 'ts3pilot' ),
 				),
 			)
 		);

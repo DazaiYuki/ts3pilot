@@ -2,6 +2,35 @@
 
 All notable changes to TS3 Community Operations Suite are documented here.
 
+## [0.4.0] - 2026-08-28
+
+### Fixed
+
+- WordPress identity verification instructions now match the agent's verified
+  field priority: users are told to put the one-time code in the TeamSpeak
+  client **description** or **away message** first (nickname is only a last
+  resort), instead of the old nickname-first guidance that caused 30-character
+  truncation, flood-protection kicks and public nickname churn.
+- Public channel-tree snapshots fail closed to an empty list instead of
+  returning an internal `error` key inside the list contract consumed by the
+  frontend shortcode/block.
+- `scripts/bundle.mjs` spawns pkg through its Node entry point, so `npm
+  publish` works from Windows too (spawning `pkg.cmd` without a shell raised
+  EINVAL).
+- `scripts/install.sh` now builds the asset URL deterministically from
+  `latest.json` in jsdelivr mode and falls back npmmirror → ghproxy → GitHub,
+  so the China installer no longer aborts on an unpublished npm package.
+
+### Added
+
+- `npm run publish:npm` reuses the CI-built release binary to pack
+  `ts3-manager-npm-v<version>.tgz` without running pkg locally (for networks
+  where pkg-fetch's `linuxstatic` base binaries cannot be downloaded).
+- Agent `/v1/health` and `/v1/info` now report `cliVersion`; the WordPress
+  node connection test displays it.
+- `scripts/install.sh` supports `TS3PILOT_VERSION=<ver>` to pin a specific
+  release instead of always taking the latest.
+
 ## [0.3.0] - 2026-08-28
 
 ### Added

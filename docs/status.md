@@ -1,6 +1,6 @@
 # 项目状态（STATUS.md）
 
-生成时间：2026-08-28（开发环境：Windows 11 + Node 24.15 + PHP 8.5）
+生成时间：2026-08-28（v0.4.0，开发环境：Windows 11 + Node 24.15 + PHP 8.5）
 
 ## 1. 当前验证结果（全部绿色）
 
@@ -10,8 +10,8 @@
 | `composer install`（WP 插件开发依赖） | 通过（30 包） |
 | ESLint（ts3-manager src/test） | 通过，0 warning |
 | `tsc -p tsconfig.json`（strict，含测试） | 通过 |
-| `node --test`（ts3-manager） | 115/115 通过 |
-| PHPUnit（WP 插件） | 52 测试 / 137 断言通过 |
+| `node --test`（ts3-manager） | 116/116 通过 |
+| PHPUnit（WP 插件） | 58 测试 / 158 断言通过 |
 | PHP lint（全部 PHP 文件） | 33/33 通过 |
 | PHPCS（WordPress-Extra，含豁免项） | 通过 |
 | `tsc -p tsconfig.build.json`（dist 产物） | 通过，`dist/cli/index.js` 可运行 |
@@ -128,6 +128,11 @@
   显示更新（无需上架 wordpress.org）；`Update URI:` 头 + HTTPS GitHub 资源
   白名单 + 6 小时缓存；/v1/info 新增 deployment 形态，节点连接测试会显示
   native/docker/remote。
+- v0.4.0：身份验证指引改为优先「个人描述/离开消息」（与 Agent 字段优先级
+  一致）；前台频道树失败时返回空列表（不再泄露内部 error 键）；Agent
+  health/info 新增 `cliVersion`，节点连接测试显示 CLI 版本；`install.sh`
+  支持 `TS3PILOT_VERSION` 固定版本；`npm run publish:npm` 可复用 CI 二进制
+  打包发布（本机无需 pkg）。
 - 前台：`[ts3_status]` 支持主题（auto/light/dark）、可折叠频道树、加入链接
   策略；Gutenberg Block 同步支持；全部数据经服务端 Transient 缓存。
 - 身份模块：Mapping 状态机（unbound/pending/verified/revoked）+ 一次性

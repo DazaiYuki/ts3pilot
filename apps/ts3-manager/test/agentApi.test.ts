@@ -10,6 +10,7 @@ import { createPairingState, generatePairingCode } from '../src/security/pairing
 import { MockServiceManager } from '../src/system/providers/mock.ts';
 import { MockTeamSpeakClient } from '../src/ts3/mock.ts';
 import { ChallengeStore } from '../src/identity/challengeStore.ts';
+import { CLI_VERSION } from '../src/version.ts';
 import { cleanupDir, tempDir, writeTempConfig } from './util.ts';
 
 interface SignOptions {
@@ -121,6 +122,26 @@ test('replay of the same nonce is rejected', async () => {
       assert.equal(second.status, 401);
       const payload = (await second.json()) as { error: { code: string } };
       assert.equal(payload.error.code, 'REPLAY_DETECTED');
+    },
+  );
+});
+
+test('info exposes the cli version and deployment profile', async () => {
+  await withServer(
+    tempDir('agent-info'),
+    (config) => {
+      config.agent.credential = 'test-credential';
+    },
+    async (handle) => {
+      const response = await request(handle, 'GET', '/v1/info', '', signedHeaders('test-credential', 'GET', '/v1/info', ''));
+      assert.equal(response.status, 200);
+      const body = (await response.json()) as {
+        ok: boolean;
+        data: { cliVersion?: string; deployment?: { mode?: string } };
+      };
+      assert.equal(body.ok, true);
+      assert.equal(body.data.cliVersion, CLI_VERSION);
+      assert.ok(['native', 'docker', 'remote', 'unknown'].includes(body.data.deployment?.mode ?? ''));
     },
   );
 });

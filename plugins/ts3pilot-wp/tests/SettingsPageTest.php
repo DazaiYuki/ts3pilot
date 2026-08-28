@@ -41,6 +41,7 @@ final class SettingsPageTest extends TestCase {
 			array(
 				'nodeId'         => 'node-a',
 				'mode'           => 'production',
+				'cliVersion'     => '0.4.0',
 				'ts3Provider'    => 'serverquery',
 				'systemProvider' => 'systemd',
 				'deployment'     => 'native',
@@ -52,6 +53,7 @@ final class SettingsPageTest extends TestCase {
 		$html = $this->render();
 		$this->assertStringContainsString( 'Connection OK', $html );
 		$this->assertStringContainsString( 'node-a', $html );
+		$this->assertStringContainsString( 'CLI 0.4.0', $html );
 		$this->assertStringContainsString( 'serverquery', $html );
 		$this->assertStringContainsString( 'deployment native', $html );
 		$this->assertStringContainsString( 'remote mode yes', $html );

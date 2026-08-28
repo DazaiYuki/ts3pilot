@@ -70,4 +70,20 @@ final class StatusServiceTest extends TestCase {
 		$this->assertFalse( $snapshot['online'] );
 		$this->assertTrue( $snapshot['error'] );
 	}
+
+	public function test_channels_snapshot_fails_closed_to_an_empty_list(): void {
+		$repository = new Repository();
+		$repository->set_many(
+			array(
+				'agent_url'        => 'http://127.0.0.1:17880',
+				'agent_credential' => 'secret-credential',
+			)
+		);
+		$GLOBALS['__ts3pilot_http_queue'][] = new \WP_Error( 'http_request_failed', 'connection refused' );
+
+		$service  = new StatusService( new Client( $repository ), $repository );
+		$channels = $service->get_channels_snapshot( true );
+		$this->assertSame( array(), $channels );
+		$this->assertArrayNotHasKey( 'error', $channels );
+	}
 }

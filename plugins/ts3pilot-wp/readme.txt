@@ -4,7 +4,7 @@ Tags: teamspeak, ts3, server, status, control plane
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 0.3.0
+Stable tag: 0.4.0
 License: Apache-2.0
 License URI: https://www.apache.org/licenses/LICENSE-2.0
 
@@ -61,3 +61,13 @@ No. WordPress capabilities and TeamSpeak permissions are completely separate.
 * Bug fixes: plugin version constant now matches the release version.
 
 = 0.2.0 =
+= 0.4.0 =
+
+* Identity verification instructions now guide users to put the code in the
+  TeamSpeak client description or away message first (nickname is the last
+  resort), matching the agent's verification field priority.
+* Public channel-tree snapshots fail closed to an empty list instead of leaking
+  an internal `error` key into the list contract.
+* Node connection test now also reports the agent CLI version.
+
+= 0.3.0 =

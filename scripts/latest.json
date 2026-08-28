@@ -1,6 +1,6 @@
 {
-  "version": "0.3.0",
-  "github": "https://github.com/DazaiYuki/ts3pilot/releases/download/v0.3.0/ts3pilot-linux-x64-v0.3.0.tar.gz",
-  "npmmirror": "https://registry.npmmirror.com/@ts3pilot/ts3-manager/-/ts3-manager-0.3.0.tgz",
+  "version": "0.4.0",
+  "github": "https://github.com/DazaiYuki/ts3pilot/releases/download/v0.4.0/ts3pilot-linux-x64-v0.4.0.tar.gz",
+  "npmmirror": "https://registry.npmmirror.com/@ts3pilot/ts3-manager/-/ts3-manager-0.4.0.tgz",
   "note": "The npmmirror URL only works once @ts3pilot/ts3-manager is published to npm. install-cn.sh automatically falls back to ghproxy mirrors and then direct GitHub when it is not available."
 }

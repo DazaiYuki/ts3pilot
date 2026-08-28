@@ -607,7 +607,7 @@ final class AdminController {
 				'ok'           => true,
 				'code'         => $code,
 				'expires_at'   => time() + 600,
-				'instructions' => '在 TeamSpeak 中把昵称改为包含验证码的文本（例如："Player CODE"），等待自动核验。',
+				'instructions' => '请在 TeamSpeak 客户端中，把验证码填入「个人描述（Description）」或「离开消息（Away Message）」（昵称为最后手段，核验后可改回），等待自动核验。',
 			)
 		);
 	}

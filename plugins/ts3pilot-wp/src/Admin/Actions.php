@@ -133,6 +133,7 @@ final class Actions {
 				array(
 					'nodeId'         => sanitize_text_field( (string) ( $info['nodeId'] ?? '' ) ),
 					'mode'           => sanitize_key( (string) ( $info['mode'] ?? '' ) ),
+					'cliVersion'     => sanitize_text_field( (string) ( $info['cliVersion'] ?? '' ) ),
 					'ts3Provider'    => sanitize_key( (string) ( $info['ts3Provider'] ?? '' ) ),
 					'systemProvider' => sanitize_key( (string) ( $info['systemProvider'] ?? '' ) ),
 					'deployment'     => sanitize_key( (string) ( $info['deployment']['mode'] ?? 'unknown' ) ),

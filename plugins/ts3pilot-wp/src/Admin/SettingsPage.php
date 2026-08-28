@@ -98,8 +98,9 @@ final class SettingsPage {
 			$info    = '' === $node_id ? array() : get_transient( 'ts3pilot_node_test_' . $node_id );
 			if ( is_array( $info ) && count( $info ) > 0 ) {
 				$detail = sprintf(
-					'Connection OK — node %s, TS3 provider %s, system provider %s, deployment %s, remote mode %s.',
+					'Connection OK — node %s, CLI %s, TS3 provider %s, system provider %s, deployment %s, remote mode %s.',
 					(string) ( $info['nodeId'] ?? $node_id ),
+					(string) ( $info['cliVersion'] ?? 'unknown' ),
 					(string) ( $info['ts3Provider'] ?? 'unknown' ),
 					(string) ( $info['systemProvider'] ?? 'unknown' ),
 					(string) ( $info['deployment'] ?? 'unknown' ),

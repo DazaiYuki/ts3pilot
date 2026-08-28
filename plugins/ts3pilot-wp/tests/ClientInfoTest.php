@@ -37,6 +37,7 @@ final class ClientInfoTest extends TestCase {
 					'data' => array(
 						'nodeId'         => 'node-1',
 						'mode'           => 'production',
+						'cliVersion'     => '0.4.0',
 						'ts3Provider'    => 'serverquery',
 						'systemProvider' => 'systemd',
 						'remoteMode'     => true,
@@ -46,6 +47,7 @@ final class ClientInfoTest extends TestCase {
 		);
 		$info                               = ( new Client( new Repository() ) )->info();
 		$this->assertSame( 'node-1', (string) ( $info['nodeId'] ?? '' ) );
+		$this->assertSame( '0.4.0', (string) ( $info['cliVersion'] ?? '' ) );
 		$this->assertSame( 'serverquery', (string) ( $info['ts3Provider'] ?? '' ) );
 		$this->assertTrue( (bool) ( $info['remoteMode'] ?? false ) );
 		$this->assertCount( 1, $GLOBALS['__ts3pilot_http_calls'] );

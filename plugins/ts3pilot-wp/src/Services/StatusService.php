@@ -79,7 +79,10 @@ final class StatusService {
 		try {
 			$channels = $client->request( 'GET', '/v1/ts3/channels' );
 		} catch ( AgentException $error ) {
-			return array( 'error' => true );
+			// Fail closed to an empty list; the channel tree is a public
+			// projection and must never leak an internal error flag into the
+			// list contract consumed by the shortcode/block.
+			return array();
 		}
 		$projected = array();
 		foreach ( $channels as $channel ) {

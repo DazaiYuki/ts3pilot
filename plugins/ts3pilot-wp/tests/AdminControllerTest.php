@@ -226,6 +226,10 @@ final class AdminControllerTest extends TestCase {
 		$this->assertSame( 200, $response->get_status() );
 		$this->assertMatchesRegularExpression( '/^[A-F0-9]{8}$/', (string) $response->get_data()['code'] );
 		$this->assertSame( 'pending', Mapping::get( 5 )['status'] );
+		$instructions = (string) ( $response->get_data()['instructions'] ?? '' );
+		$this->assertStringContainsString( '个人描述', $instructions );
+		$this->assertStringContainsString( '离开消息', $instructions );
+		$this->assertStringNotContainsString( '把昵称改为', $instructions );
 	}
 
 	public function test_identity_me_returns_mapping(): void {

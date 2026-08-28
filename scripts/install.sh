@@ -3,6 +3,7 @@
 # TS3Pilot — one-line Linux installer (standalone binary, zero system deps).
 #   curl -sSL https://raw.githubusercontent.com/DazaiYuki/ts3pilot/main/scripts/install.sh | sudo bash
 #   curl -sSL https://cdn.jsdelivr.net/gh/DazaiYuki/ts3pilot@main/scripts/install-cn.sh | sudo bash
+# Pin a specific version with TS3PILOT_VERSION=0.4.0 (defaults to latest).
 #
 # This script NEVER installs system packages and NEVER modifies existing
 # runtime libraries (safe for aaPanel/Baota style environments).
@@ -66,6 +67,11 @@ resolve_github_asset_from_api() {
 }
 
 resolve_asset() {
+	if [ -n "${TS3PILOT_VERSION:-}" ]; then
+		log "Pinned version: ${TS3PILOT_VERSION} (TS3PILOT_VERSION)"
+		asset_url="$(github_asset_for_version "$TS3PILOT_VERSION")"
+		return 0
+	fi
 	if [ "$MIRROR" = "jsdelivr" ]; then
 		log "Fetching release metadata via jsDelivr..."
 		local info version

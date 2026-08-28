@@ -28,6 +28,7 @@ import { runProcess } from '../system/processRunner.ts';
 import type { ServiceManager } from '../system/serviceManager.ts';
 import { createBackupArchive, DEFAULT_BACKUP_INCLUDES, restoreBackupArchive } from '../system/backupEngine.ts';
 import type { TeamSpeakClient, Ts3FeatureValue } from '../ts3/teamSpeakClient.ts';
+import { CLI_VERSION } from '../version.ts';
 import type { AgentState } from './state.ts';
 import type { RouteSpec } from './routeTable.ts';
 
@@ -63,6 +64,7 @@ export function healthHandler(ctx: HandlerContext): HandlerResult {
   const data: HealthInfo = {
     status: 'ok',
     service: 'ts3-agent',
+    cliVersion: CLI_VERSION,
     protocolVersion: 1,
     nodeId: ctx.config.nodeId,
     mode: ctx.config.mode,
@@ -105,6 +107,7 @@ export async function infoHandler(ctx: HandlerContext): Promise<HandlerResult> {
     data: {
       nodeId: ctx.config.nodeId,
       mode: ctx.config.mode,
+      cliVersion: CLI_VERSION,
       protocolVersion: 1,
       capabilities: ctx.config.agent.capabilities,
       systemProvider: ctx.services.providerName,

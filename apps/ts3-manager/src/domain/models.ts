@@ -53,6 +53,7 @@ export interface ApiStatusInfo {
 export interface HealthInfo {
   status: 'ok';
   service: 'ts3-agent';
+  cliVersion: string;
   protocolVersion: number;
   nodeId: string;
   mode: string;
