@@ -35,6 +35,8 @@ All notable changes to TS3 Community Operations Suite are documented here.
   node connection test displays it.
 - `scripts/install.sh` supports `TS3PILOT_VERSION=<ver>` to pin a specific
   release instead of always taking the latest.
+- CI release attachments now include the npm tarball
+  (`ts3-manager-npm-v<version>.tgz`) alongside the CLI/WP archives.
 
 ## [0.3.0] - 2026-08-28
 

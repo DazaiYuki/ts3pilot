@@ -153,6 +153,7 @@ jobs:
           name: ts3pilot-release
           path: |
             dist/release/*.tar.gz
+            dist/release/*.tgz
             dist/release/*.zip
           if-no-files-found: error
 
@@ -179,5 +180,5 @@ jobs:
           files: |
             dist/release/ts3pilot-linux-x64-v*.tar.gz
             dist/release/ts3pilot-wp-v*.zip
-            dist/release/latest.json
+            dist/release/ts3-manager-npm-v*.tgz
           generate_release_notes: true

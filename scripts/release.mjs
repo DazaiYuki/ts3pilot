@@ -66,10 +66,7 @@ for (const file of collectWpFiles(wpRoot)) {
 const wpArchive = join(releaseDir, `ts3pilot-wp-v${version}.zip`);
 execFileSync('tar', ['-a', '-cf', wpArchive, '-C', wpStageRoot, 'ts3pilot-wp'], { stdio: 'inherit' });
 
-// 4. CDN mirror metadata.
-cpSync(join(root, 'scripts', 'latest.json'), join(releaseDir, 'latest.json'));
-
-for (const artifact of [cliArchive, join(releaseDir, `ts3-manager-npm-v${version}.tgz`), wpArchive, join(releaseDir, 'latest.json')]) {
+for (const artifact of [cliArchive, join(releaseDir, `ts3-manager-npm-v${version}.tgz`), wpArchive]) {
   const size = statSync(artifact).size;
   console.log(`artifact: ${artifact} (${(size / 1024).toFixed(1)} KiB)`);
 }
