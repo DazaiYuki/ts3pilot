@@ -1,11 +1,12 @@
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { writeTarGzArchive } from '../apps/ts3-manager/src/system/backupEngine.ts';
 
 const root = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const version = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version;
 const releaseDir = join(root, 'dist', 'release');
+const pkgDir = join(root, 'apps', 'ts3-manager');
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 console.log(`Building release v${version}...`);
@@ -34,6 +35,23 @@ cpSync(join(root, 'docs', 'notice.md'), join(stage, 'NOTICE.md'));
 const cliArchive = join(releaseDir, `ts3pilot-linux-x64-v${version}.tar.gz`);
 await writeTarGzArchive(collectEntries(stage), cliArchive);
 
+// 2.5 npm binary tarball: publishable directly with
+// `npm publish ts3-manager-npm-v<version>.tgz --access public`.
+execFileSync(process.execPath, [join(root, 'scripts', 'npm-prepack.mjs')], { cwd: pkgDir, stdio: 'inherit' });
+const packOutput = execFileSync(
+  npm,
+  ['pack', '--ignore-scripts', '--json', '--pack-destination', releaseDir, '--workspace', '@ts3pilot/ts3-manager'],
+  { cwd: root, encoding: 'utf8', shell: process.platform === 'win32' },
+);
+const packJson = JSON.parse(packOutput.trim());
+const packedFilename = Array.isArray(packJson)
+  ? (packJson[0]?.filename ?? '')
+  : ((Object.values(packJson)[0]?.filename) ?? '');
+if (packedFilename.length === 0) {
+  throw new Error('npm pack did not report a tarball filename');
+}
+renameSync(join(releaseDir, packedFilename), join(releaseDir, `ts3-manager-npm-v${version}.tgz`));
+
 // 3. WordPress plugin zip (unchanged: standard plugin directory structure).
 const wpRoot = join(root, 'plugins', 'ts3pilot-wp');
 const wpStageRoot = join(releaseDir, `ts3pilot-wp-v${version}`);
@@ -51,7 +69,7 @@ execFileSync('tar', ['-a', '-cf', wpArchive, '-C', wpStageRoot, 'ts3pilot-wp'], 
 // 4. CDN mirror metadata.
 cpSync(join(root, 'scripts', 'latest.json'), join(releaseDir, 'latest.json'));
 
-for (const artifact of [cliArchive, wpArchive, join(releaseDir, 'latest.json')]) {
+for (const artifact of [cliArchive, join(releaseDir, `ts3-manager-npm-v${version}.tgz`), wpArchive, join(releaseDir, 'latest.json')]) {
   const size = statSync(artifact).size;
   console.log(`artifact: ${artifact} (${(size / 1024).toFixed(1)} KiB)`);
 }

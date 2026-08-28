@@ -1,19 +1,33 @@
 {
   "name": "@ts3pilot/ts3-manager",
   "version": "0.3.0",
-  "private": true,
   "description": "Local-first TeamSpeak 3 server management CLI and controlled Host Control Plane agent.",
   "type": "module",
   "license": "Apache-2.0",
-  "engines": {
-    "node": ">=22.6.0"
-  },
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
   "bin": {
-    "ts3pilot": "dist/cli/index.js"
+    "ts3pilot": "ts3pilot"
+  },
+  "files": [
+    "ts3pilot",
+    "config.example.json",
+    "LICENSE",
+    "NOTICE.md",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "bundle": "node ../../scripts/bundle.mjs",
+    "prepack": "npm run bundle && node ../../scripts/npm-prepack.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "test": "node --test \"test/**/*.test.ts\"",
     "lint": "eslint src test --max-warnings 0"

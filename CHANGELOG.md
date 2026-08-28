@@ -38,6 +38,12 @@ All notable changes to TS3 Community Operations Suite are documented here.
 
 - `apps/ts3-manager/src/cli/index.ts` now awaits async commands (`install`,
   `update`) so errors surface through the normal error path.
+- npm distribution: `@ts3pilot/ts3-manager` is now publishable as a Linux x64
+  standalone binary package (`bin.ts3pilot` → the pkg-built binary, `os`/
+  `cpu` restricted to linux/x64, `prepack` builds and stages it). `npm run
+  release` also produces a `ts3-manager-npm-v<version>.tgz` artifact that can
+  be published with `npm publish <tgz> --access public`; once published,
+  npmmirror auto-syncs and the `install-cn.sh` fast path works for real.
 
 ### Fixed
 

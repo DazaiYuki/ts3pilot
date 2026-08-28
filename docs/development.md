@@ -69,3 +69,36 @@ npm 缓存默认放在工作区 `.npm-cache`（见 `.npmrc`），避免污染用
 无网络时：Node 端零运行时依赖可直接 `node src/cli/index.ts`；`npm test`
 使用内置 `node:test`。TypeScript/eslint 等 devDependencies 需要一次在线
 `npm install`。
+
+## 8. 发布 @ts3pilot/ts3-manager 到 npm
+
+该包是 **Linux x64 单文件二进制** 的分发通道：`bin.ts3pilot` 指向包内
+`ts3pilot` 可执行文件（由 `pkg` 编译），服务器 `npm i -g` 后无需安装
+Node.js 即可运行；npmmirror 会自动同步 npmjs，`install-cn.sh` 的
+npmmirror 下载源随之生效。
+
+前置条件：
+
+1. npm 账号（https://www.npmjs.com）已注册并验证邮箱。
+2. 拥有 `@ts3pilot` scope：账号名须为 `ts3pilot`，或在
+   https://www.npmjs.com/org/create 创建名为 `ts3pilot` 的免费组织并把你的
+   账号加为成员（`npm login` 后若提示无权发布 scoped 包，多半是这步没做）。
+
+发布（二选一）：
+
+```bash
+# 方式 A：直接发布（prepack 会自动执行 tsc 编译 + pkg 打包 + 暂存二进制）
+cd apps/ts3-manager
+npm config set registry https://registry.npmjs.org
+npm publish --access public
+
+# 方式 B：发布 CI/本机构建出的 tarball（无需本机重跑 pkg）
+npm publish dist/release/ts3-manager-npm-v0.3.0.tgz --access public
+```
+
+注意事项：
+
+- 包声明 `"os": ["linux"]`、`"cpu": ["x64"]`，非 Linux x64 环境安装会提示
+  不支持的平台（符合设计）。
+- 发布后 npmmirror 数分钟内同步；版本号以 `apps/ts3-manager/package.json`
+  与 `scripts/latest.json` 为准，升级版本时两者要同步更新。
