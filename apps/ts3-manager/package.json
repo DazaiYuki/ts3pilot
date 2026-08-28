@@ -1,7 +1,7 @@
 {
   "name": "@ts3pilot/ts3-manager",
   "version": "0.3.0",
-  "description": "Local-first TeamSpeak 3 server management CLI and controlled Host Control Plane agent.",
+  "description": "Independent, local-first TeamSpeak 3 server management CLI and controlled Host Control Plane agent (not affiliated with TeamSpeak Systems GmbH).",
   "type": "module",
   "license": "Apache-2.0",
   "os": [
