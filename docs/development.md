@@ -96,6 +96,17 @@ npm publish --access public
 npm publish dist/release/ts3-manager-npm-v0.3.0.tgz --access public
 ```
 
+如果本机 pkg 下载基础二进制失败（国内网络访问 pkg-fetch 的 GitHub 源常被
+拦截），改用 `publish:npm`：直接复用 GitHub Releases 上 CI 构建好的二进制
+打包，完全绕开本机 pkg：
+
+```bash
+npm run publish:npm
+# 或使用已下载好的发布包：
+npm run publish:npm -- --archive ./ts3pilot-linux-x64-v0.3.0.tar.gz
+npm publish dist/release/ts3-manager-npm-v0.3.0.tgz
+```
+
 注意事项：
 
 - 包声明 `"os": ["linux"]`、`"cpu": ["x64"]`，非 Linux x64 环境安装会提示

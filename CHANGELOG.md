@@ -44,6 +44,10 @@ All notable changes to TS3 Community Operations Suite are documented here.
   release` also produces a `ts3-manager-npm-v<version>.tgz` artifact that can
   be published with `npm publish <tgz> --access public`; once published,
   npmmirror auto-syncs and the `install-cn.sh` fast path works for real.
+- `npm run publish:npm` reuses the CI-built release binary and packs the npm
+  tarball without running pkg locally (works around pkg-fetch `linuxstatic`
+  downloads being blocked/slow in CN networks); `bundle.mjs` spawns pkg via
+  its Node entry point so local `npm publish` also works on Windows.
 
 ### Fixed
 

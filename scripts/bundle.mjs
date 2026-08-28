@@ -6,12 +6,15 @@ const root = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '
 const pkgDir = join(root, 'apps', 'ts3-manager');
 const out = join(pkgDir, 'dist', 'pkg', 'ts3pilot-linux-x64');
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const pkgBinName = process.platform === 'win32' ? 'pkg.cmd' : 'pkg';
-// npm workspaces hoist binaries to the repository root node_modules/.bin.
-const pkgBin =
-  [join(root, 'node_modules', '.bin', pkgBinName), join(pkgDir, 'node_modules', '.bin', pkgBinName)].find((path) => existsSync(path)) ?? '';
-if (pkgBin.length === 0) {
-  console.error('bundle: pkg binary not found; run `npm install` in the repository root first');
+// Spawn pkg through its Node entry point instead of the platform shim:
+// spawning .cmd files on Windows without a shell raises EINVAL, and cmd.exe
+// mangles forward-slash paths. `node <pkg>/lib-es5/bin.js` works everywhere.
+const pkgJs =
+  [join(root, 'node_modules', '@yao-pkg', 'pkg', 'lib-es5', 'bin.js'), join(pkgDir, 'node_modules', '@yao-pkg', 'pkg', 'lib-es5', 'bin.js')].find(
+    (path) => existsSync(path),
+  ) ?? '';
+if (pkgJs.length === 0) {
+  console.error('bundle: @yao-pkg/pkg is not installed; run `npm install` in the repository root first');
   process.exit(1);
 }
 
@@ -28,7 +31,13 @@ for (const target of candidates) {
   try {
     console.log(`bundle: trying target ${target}`);
     rmSync(out, { force: true });
-    execFileSync(pkgBin, ['.', '--targets', target, '--output', out], { cwd: pkgDir, stdio: 'inherit' });
+    // Pass the compiled JS entry explicitly: `bin` points at the staged
+    // standalone binary (created by npm-prepack.mjs after bundling), so pkg
+    // must not read it from package.json.
+    execFileSync(process.execPath, [pkgJs, 'dist/cli/index.js', '--targets', target, '--output', out], {
+      cwd: pkgDir,
+      stdio: 'inherit',
+    });
     if (!existsSync(out)) throw new Error(`pkg did not produce ${out}`);
     console.log(`bundle: built with ${target}`);
     process.exit(0);

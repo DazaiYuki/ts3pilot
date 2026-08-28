@@ -21,6 +21,7 @@
     "verify": "node scripts/verify.mjs",
     "release": "node scripts/release.mjs",
     "build-release": "node scripts/release.mjs",
+    "publish:npm": "node scripts/npm-pack-existing.mjs",
     "cli": "node apps/ts3-manager/src/cli/index.ts",
     "package": "node scripts/package.mjs"
   }
