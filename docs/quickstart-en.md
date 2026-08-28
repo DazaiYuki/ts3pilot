@@ -73,8 +73,10 @@ Can't reach GitHub? Use the jsDelivr mirror:
 curl -sSL https://cdn.jsdelivr.net/gh/DazaiYuki/ts3pilot@main/scripts/install-cn.sh | sudo bash
 ```
 
-(The mirror uses the npmmirror npm tarball once `@ts3pilot/ts3-manager` is
-published to npm; until then it falls back to the GitHub asset.)
+(The installer tries, in order: the npmmirror npm tarball, ghproxy mirrors,
+then direct GitHub. Until `@ts3pilot/ts3-manager` is published to npm it
+automatically uses the ghproxy/GitHub sources, so an npm 404 never aborts the
+install.)
 
 ### Point it at your TS3 installation
 

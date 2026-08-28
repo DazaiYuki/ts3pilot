@@ -2,9 +2,10 @@
 #
 # TS3Pilot — one-line Linux installer (standalone binary, zero system deps).
 #   curl -sSL https://raw.githubusercontent.com/DazaiYuki/ts3pilot/main/scripts/install.sh | sudo bash
+#   curl -sSL https://cdn.jsdelivr.net/gh/DazaiYuki/ts3pilot@main/scripts/install-cn.sh | sudo bash
 #
 # This script NEVER installs system packages and NEVER modifies existing
-# runtime libraries (safe for aaPanel/宝塔 style environments).
+# runtime libraries (safe for aaPanel/Baota style environments).
 #
 set -euo pipefail
 # shellcheck shell=bash
@@ -16,6 +17,10 @@ REPO="DazaiYuki/ts3pilot"
 PREFIX="/opt/ts3pilot"
 BIN="/usr/local/bin/ts3pilot"
 MIRROR="${TS3PILOT_MIRROR:-github}"
+GH_PROXY_PREFIXES=(
+	"https://gh-proxy.com/"
+	"https://mirror.ghproxy.com/"
+)
 
 log() {
 	printf '%b\n' "$*"
@@ -43,33 +48,67 @@ esac
 log "Detected architecture: ${arch} (${ts3_arch})"
 
 asset_url=""
+npmmirror_url=""
+
+github_asset_for_version() {
+	printf '%s' "https://github.com/${REPO}/releases/download/v${1}/ts3pilot-linux-x64-v${1}.tar.gz"
+}
+
+resolve_github_asset_from_api() {
+	log "Fetching latest release metadata from GitHub..."
+	local api
+	api="$(curl -fsSL --max-time 20 "https://api.github.com/repos/${REPO}/releases/latest")" || return 1
+	asset_url="$(printf '%s' "$api" |
+		grep -oE '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]*ts3pilot-linux-x64-v[^"]*\.tar\.gz"' |
+		sed -E 's/.*"[[:space:]]*:[[:space:]]*"//; s/"$//' |
+		head -n1 || true)"
+	[ -n "$asset_url" ]
+}
+
 resolve_asset() {
 	if [ "$MIRROR" = "jsdelivr" ]; then
 		log "Fetching release metadata via jsDelivr..."
-		info="$(curl -fsSL "https://cdn.jsdelivr.net/gh/${REPO}@main/scripts/latest.json" || true)"
-		mirror_url="$(
-			printf '%s' "$info" |
-				grep -oE '"npmmirror"[[:space:]]*:[[:space:]]*"[^"]*"' |
-				sed -E 's/.*"[[:space:]]*:[[:space:]]*"//; s/"$//' |
-				head -n1 || true
-		)"
-		if [ -n "$mirror_url" ]; then
-			asset_url="$mirror_url"
+		local info version
+		info="$(curl -fsSL --max-time 20 "https://cdn.jsdelivr.net/gh/${REPO}@main/scripts/latest.json" || true)"
+		version="$(printf '%s' "$info" |
+			grep -oE '"version"[[:space:]]*:[[:space:]]*"[^"]*"' |
+			sed -E 's/.*"[[:space:]]*:[[:space:]]*"//; s/"$//' |
+			head -n1 || true)"
+		npmmirror_url="$(printf '%s' "$info" |
+			grep -oE '"npmmirror"[[:space:]]*:[[:space:]]*"[^"]*"' |
+			sed -E 's/.*"[[:space:]]*:[[:space:]]*"//; s/"$//' |
+			head -n1 || true)"
+		if [ -n "$version" ]; then
+			# Deterministic GitHub asset URL built from the version, so the
+			# China path never depends on api.github.com being reachable.
+			asset_url="$(github_asset_for_version "$version")"
 			return 0
 		fi
 		log "Mirror metadata unavailable; falling back to GitHub."
+		resolve_github_asset_from_api
+		return $?
 	fi
-
-	log "Fetching latest release metadata from GitHub..."
-	api="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest")" || die "无法获取 Release 信息，请检查网络或仓库是否存在。"
-	asset_url="$(
-		printf '%s' "$api" |
-			grep -oE '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]*ts3pilot-linux-x64-v[^"]*\.tar\.gz"' |
-			sed -E 's/.*"[[:space:]]*:[[:space:]]*"//; s/"$//' |
-			head -n1 || true
-	)"
+	resolve_github_asset_from_api
 }
-resolve_asset
+
+download_with_fallback() {
+	local candidate
+	for candidate in "$@"; do
+		if [ -z "$candidate" ]; then
+			continue
+		fi
+		log "Downloading: ${candidate}"
+		if curl -fSL --max-time 600 "$candidate" -o "$tmp/ts3pilot.tar.gz"; then
+			return 0
+		fi
+		log "Download failed; trying the next source..."
+	done
+	return 1
+}
+
+if ! resolve_asset; then
+	die "无法获取 Release 信息，请检查网络或仓库是否存在。"
+fi
 
 if [ -z "$asset_url" ]; then
 	die "未在最新 Release 中找到 ts3pilot-linux-x64-v*.tar.gz 发布包。"
@@ -79,8 +118,16 @@ tmp="$(mktemp -d)"
 # shellcheck disable=SC2016
 trap 'rm -rf "$tmp"' EXIT
 
-log "Downloading: ${asset_url}"
-curl -fSL "$asset_url" -o "$tmp/ts3pilot.tar.gz" || die "下载失败。"
+if [ "$MIRROR" = "jsdelivr" ]; then
+	download_with_fallback \
+		"$npmmirror_url" \
+		"${GH_PROXY_PREFIXES[0]}${asset_url}" \
+		"${GH_PROXY_PREFIXES[1]}${asset_url}" \
+		"$asset_url" ||
+		die "所有下载源均失败：npm 包未发布、ghproxy 不可用或 GitHub 直连超时。可稍后重试，或改用直连安装：curl -sSL https://raw.githubusercontent.com/${REPO}/main/scripts/install.sh | sudo bash"
+else
+	download_with_fallback "$asset_url" || die "下载失败。"
+fi
 
 mkdir -p "$PREFIX"
 tar -xzf "$tmp/ts3pilot.tar.gz" -C "$tmp"

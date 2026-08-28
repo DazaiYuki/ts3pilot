@@ -39,6 +39,14 @@ All notable changes to TS3 Community Operations Suite are documented here.
 - `apps/ts3-manager/src/cli/index.ts` now awaits async commands (`install`,
   `update`) so errors surface through the normal error path.
 
+### Fixed
+
+- `scripts/install.sh` (and therefore `install-cn.sh`): the China mirror path
+  no longer aborts when the `@ts3pilot/ts3-manager` npm tarball is not yet
+  published (404). The installer now builds the GitHub asset URL from
+  `latest.json` and downloads from the first working source in this order:
+  npmmirror npm tarball → gh-proxy.com → mirror.ghproxy.com → direct GitHub.
+
 ## [0.2.0] - 2026-08-27
 
 ### Changed

@@ -63,8 +63,9 @@ curl -sSL https://raw.githubusercontent.com/DazaiYuki/ts3pilot/main/scripts/inst
 curl -sSL https://cdn.jsdelivr.net/gh/DazaiYuki/ts3pilot@main/scripts/install-cn.sh | sudo bash
 ```
 
-（CLI 发布包镜像走 npmmirror，需先把 `@ts3pilot/ts3-manager` 发布到 npm 后
-生效；在此之前会自动回退 GitHub 资产。）
+（安装脚本自动按序尝试：npmmirror 包 → ghproxy 镜像 → GitHub 直连；
+`@ts3pilot/ts3-manager` 尚未发布到 npm 时会自动走 ghproxy/GitHub，
+不会因 npm 404 中断。）
 
 脚本会自动：检测架构 → 从 GitHub Releases 拉取最新
 `ts3pilot-linux-x64-v*.tar.gz`（**独立单文件二进制，服务器无需安装
