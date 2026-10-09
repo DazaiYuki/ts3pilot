@@ -20,16 +20,16 @@
 
 ## 路线二：脚本可下载，Release 需代理
 
-下载当前仓库安装器。明确固定程序版本并提供可信摘要，避免脚本再依赖 GitHub API 或 GitHub 的摘要下载。
+下载以下固定提交的安装器。明确固定程序版本并提供可信摘要，避免脚本再依赖 GitHub API 或 GitHub 的摘要下载。
 
 ```bash
-curl -fsSL --max-time 30 https://cdn.jsdelivr.net/gh/DazaiYuki/ts3pilot@main/scripts/install.sh -o install-ts3pilot.sh
+curl -fsSL --max-time 30 https://cdn.jsdelivr.net/gh/DazaiYuki/ts3pilot@ab7e30417ad5ea9714c3a3d84655bd568ba777d3/scripts/install.sh -o install-ts3pilot.sh
 sudo env TS3PILOT_VERSION=0.4.1 \
   TS3PILOT_SHA256=3de1e4012f8c9bdb40187844b9006d8778b4c8a881c89152cca36367ca09871d \
   TS3PILOT_MIRROR=jsdelivr bash install-ts3pilot.sh
 ```
 
-安装器依次尝试 gh-proxy、mirror.ghproxy 和 GitHub 官方下载。**这个选项并不保证代理可用**；全部失败则保留旧程序，改走路线三。此处 `@main` 指安装器源码，`TS3PILOT_VERSION=0.4.1` 固定的是程序资产，不会安装其他版本。
+安装器依次尝试 gh-proxy、mirror.ghproxy 和 GitHub 官方下载。**这个选项并不保证代理可用**；全部失败则保留旧程序，改走路线三。此处 jsDelivr URL 固定安装器源码提交，`TS3PILOT_VERSION=0.4.1` 固定程序资产，避免缓存旧脚本或意外安装其他版本。
 
 以下摘要来自正式 v0.4.1 Release，并已与实际下载文件及 GitHub 资产摘要核对。只适用于这些文件；升级其他版本时，从可信的正式发布渠道重新获取对应摘要，不要沿用本表或只信任代理一起提供的 `.sha256`。
 
@@ -46,7 +46,7 @@ sudo env TS3PILOT_VERSION=0.4.1 \
 
 - `ts3pilot-linux-x64-v0.4.1.tar.gz`
 - `ts3pilot-wp-v0.4.1.zip`（需要面板时）
-- **当前 main 的** `scripts/install.sh`（本次增加了本地档案支持；v0.4.1 标签中的旧安装器没有此选项）
+- 支持本地档案的 [install.sh](https://raw.githubusercontent.com/DazaiYuki/ts3pilot/ab7e30417ad5ea9714c3a3d84655bd568ba777d3/scripts/install.sh)（本次增加了该功能；v0.4.1 标签中的旧安装器没有此选项）
 
 使用当前安装器安装本地包，必须同时提供固定版本和可信 SHA-256。它不会为此访问版本 API、摘要文件或下载代理：
 
