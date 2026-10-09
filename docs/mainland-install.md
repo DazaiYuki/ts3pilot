@@ -88,6 +88,16 @@ CLI 镜像设置**不会代理 TeamSpeak 的官方服务器下载**。新建流�
 
 WordPress 自动更新也依赖 GitHub API 和资产下载，无法访问时手动上传已校验的 ZIP。GitHub 下载代理不能用作 Agent 地址。
 
+如果服务器已有你配置的 HTTP CONNECT 出口代理，v0.4.1 内置的 Node 24 运行时可通过 `NODE_USE_ENV_PROXY=1` 使用代理环境变量。curl 的代理配置不会自动让 CLI 的 Node fetch 走代理；sudo 也可能清除环境变量。例子中的地址必须换成服务器实际可达、由你管理的代理，不能直接沿用自己电脑的回环地址：
+
+```bash
+sudo env NODE_USE_ENV_PROXY=1 HTTPS_PROXY=http://127.0.0.1:7890 \
+  NO_PROXY=localhost,127.0.0.1,::1 \
+  ts3pilot update check --no-mirror --config /var/lib/ts3pilot/config.json
+```
+
+确认元数据可访问后再选择 `update self`。此设置针对 CLI 的 HTTPS 下载，不会代理 TS3 的原始 Query/语音流量或 WordPress 的 PHP 请求。企业代理有自己的 CA 时，通过 `NODE_EXTRA_CA_CERTS=/实际路径/可信CA.pem` 配置受信证书，不要关闭 TLS 校验。不要将带密码的代理 URL 写入公开日志或命令历史。
+
 Agent 与 WordPress 配对后，状态、频道与客户端管理只需要 WordPress → Agent → TS3 的连接。推荐同机回环或受限内网，跨主机使用 HTTPS 与来源限制。不要为了下载问题将裸 Agent 管理端口公开到公网。
 
 ## 常见排查
