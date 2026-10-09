@@ -51,7 +51,10 @@ CLI/Agent 独立可用，WordPress 插件是可选的 Web 控制平面，两者�
 2. 一键安装 TS3 Server（自动下载官方包、解压、EULA 标记、可选防火墙）：
 
    ```bash
-   sudo ts3pilot install --accept-eula --install-path /srv/ts3 --setup-firewall
+   # 先按 docs/deployment.md 创建专用非 root 账户和配置，再切换 production 模式。
+   # 默认 development 模式执行的是 mock 安装，不会安装真实 TS3。
+   sudo ts3pilot install --accept-eula --install-path /srv/ts3 \
+     --expected-sha256 '<官方包的可信SHA-256>' --config /var/lib/ts3pilot/config.json
    ```
 
 3. `ts3pilot doctor` 检查环境，然后 `ts3pilot api enable` 复制**配对码**。
@@ -61,6 +64,7 @@ CLI/Agent 独立可用，WordPress 插件是可选的 Web 控制平面，两者�
 ### 场景 B：已有 TS3 服务器接管
 
 ```bash
+ts3pilot config set mode production
 ts3pilot config set ts3.installPath /srv/ts3
 ts3pilot adopt          # 只读分析，绝不改文件
 ts3pilot doctor

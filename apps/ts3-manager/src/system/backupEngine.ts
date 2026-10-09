@@ -1,11 +1,14 @@
 import { createHash } from 'node:crypto';
+import { once } from 'node:events';
 import {
   accessSync,
   constants,
+  chmodSync,
   createReadStream,
   createWriteStream,
   existsSync,
   mkdirSync,
+  lstatSync,
   readdirSync,
   renameSync,
   statSync,
@@ -17,9 +20,10 @@ import { PassThrough } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { createGunzip, createGzip } from 'node:zlib';
 import { AppError, ErrorCode } from '../domain/errors.ts';
+import { CLI_VERSION } from '../version.ts';
 
 const TAR_BLOCK = 512;
-const MAX_FILE_SIZE = 8 * 1024 * 1024 * 1024;
+const MAX_FILE_SIZE = 8 * 1024 * 1024 * 1024 - 1;
 
 export interface BackupManifestEntry {
   path: string;
@@ -84,9 +88,16 @@ function writeOctal(buffer: Buffer, offset: number, length: number, value: numbe
 
 function buildTarHeader(input: { name: string; size: number; mtime: number; mode: number; type: '0' | '5' }): Buffer {
   const header = Buffer.alloc(TAR_BLOCK);
-  const nameBytes = Buffer.from(input.name, 'utf8');
-  const base = nameBytes.subarray(0, 100);
-  const prefix = nameBytes.subarray(100, 255);
+  let base = Buffer.from(input.name, 'utf8');
+  let prefix = Buffer.alloc(0);
+  if (base.length > 100) {
+    const split = Array.from({ length: input.name.length }, (_, i) => i).reverse().find((i) =>
+      input.name[i] === '/' && Buffer.byteLength(input.name.slice(0, i)) <= 155 && Buffer.byteLength(input.name.slice(i + 1)) <= 100,
+    );
+    if (split === undefined) throw new AppError(ErrorCode.VALIDATION, `Path cannot be represented in a ustar archive: ${input.name}`);
+    base = Buffer.from(input.name.slice(split + 1));
+    prefix = Buffer.from(input.name.slice(0, split));
+  }
   base.copy(header, 0);
   writeOctal(header, 100, 8, input.mode & 0o7777);
   writeOctal(header, 108, 8, 0);
@@ -138,7 +149,7 @@ async function writeTar(entries: Array<{ name: string; path: string; type: 'file
         name: entry.name,
         size: entry.size,
         mtime: Math.floor(Date.now() / 1000),
-        mode: 0o640,
+        mode: statSync(entry.path).mode & 0o777,
         type: entry.type === 'dir' ? '5' : '0',
       });
       out.write(header);
@@ -202,119 +213,90 @@ export async function readTarGz(
   onFile: (entry: TarFileEntryInfo, content: PassThrough) => Promise<void>,
   onUnsupported?: (name: string, type: string) => void,
 ): Promise<void> {
-  const source = createReadStream(archivePath).pipe(createGunzip());
-  let pending = Buffer.alloc(0);
-  let current:
-    | {
-        name: string;
-        size: number;
-        mode: number;
-        type: 'file' | 'dir' | 'unsupported';
-        remaining: number;
-        hash: ReturnType<typeof createHash>;
-        pass?: PassThrough;
-        onFileDone?: Promise<void>;
-        sha256?: string;
+  const input = createReadStream(archivePath);
+  const source = createGunzip();
+  input.on('error', (error) => source.destroy(error));
+  input.pipe(source);
+  const iterator = source[Symbol.asyncIterator]();
+  let pending: Buffer = Buffer.alloc(0);
+  const read = async (size: number): Promise<Buffer> => {
+    const chunks: Buffer[] = [];
+    let remaining = size;
+    while (remaining > 0) {
+      if (pending.length === 0) {
+        const chunk = await iterator.next();
+        if (chunk.done) throw new AppError(ErrorCode.VALIDATION, 'Archive ended before the end-of-archive marker');
+        pending = chunk.value as Buffer;
       }
-    | undefined;
-
-  for await (const chunk of source) {
-    // Stream file data directly out of the incoming chunk: large entries (e.g.
-    // a multi-hundred-MB files/ directory) never accumulate in `pending`, so
-    // memory stays bounded regardless of entry size.
-    if (current !== undefined && current.remaining > 0) {
-      const chunkBuffer = chunk as Buffer;
-      const take = Math.min(current.remaining, chunkBuffer.length);
-      if (take > 0) {
-        const data = chunkBuffer.subarray(0, take);
-        current.hash.update(data);
-        if (current.pass !== undefined) current.pass.write(data);
-        current.remaining -= take;
-      }
-      if (current.remaining === 0) {
-        const padding = (TAR_BLOCK - (current.size % TAR_BLOCK)) % TAR_BLOCK;
-        const rest = chunkBuffer.subarray(take);
-        if (rest.length < padding) {
-          pending = Buffer.concat([pending, rest]);
-        } else {
-          pending = Buffer.concat([pending, rest.subarray(padding)]);
-        }
-        if (current.pass !== undefined) {
-          current.pass.end();
-          current.sha256 = current.hash.digest('hex');
-          if (current.onFileDone !== undefined) await current.onFileDone;
-        }
-        current = undefined;
-      } else {
-        continue;
-      }
-    } else {
-      pending = Buffer.concat([pending, chunk as Buffer]);
+      const take = Math.min(remaining, pending.length);
+      chunks.push(pending.subarray(0, take));
+      pending = pending.subarray(take);
+      remaining -= take;
     }
-
+    return Buffer.concat(chunks, size);
+  };
+  try {
     while (true) {
-      if (current === undefined) {
-        if (pending.length < TAR_BLOCK) break;
-        const headerBytes = pending.subarray(0, TAR_BLOCK);
-        pending = pending.subarray(TAR_BLOCK);
-        const parsed = parseTarHeader(headerBytes);
-        if (parsed.name.length === 0 && parsed.size === 0) {
-          return;
+      const header = await read(TAR_BLOCK);
+      if (header.every((byte) => byte === 0)) {
+        if (!(await read(TAR_BLOCK)).every((byte) => byte === 0)) {
+          throw new AppError(ErrorCode.VALIDATION, 'Invalid end-of-archive marker');
         }
-        if (!parsed.checksumValid) {
-          throw new AppError(ErrorCode.VALIDATION, 'Corrupted tar header (checksum mismatch)');
+        // Consume the gzip stream to verify its footer/CRC instead of returning
+        // early and silently accepting a truncated or corrupt compressed file.
+        if (pending.some((byte) => byte !== 0)) throw new AppError(ErrorCode.VALIDATION, 'Unexpected trailing archive data');
+        for await (const chunk of source) {
+          if ((chunk as Buffer).some((byte) => byte !== 0)) throw new AppError(ErrorCode.VALIDATION, 'Unexpected trailing archive data');
         }
-        if (isUnsafeTarPath(parsed.name)) {
-          throw new AppError(ErrorCode.VALIDATION, `Unsafe path in archive: ${parsed.name}`);
-        }
-        if (parsed.type === '2' || parsed.type === '1') {
-          throw new AppError(ErrorCode.VALIDATION, `Unsupported link entry in archive: ${parsed.name}`);
-        }
-        if (parsed.type !== '0' && parsed.type !== '5') {
-          onUnsupported?.(parsed.name, parsed.type);
-        }
-        const isFile = parsed.type === '0';
-        current = {
-          name: parsed.name,
-          size: parsed.size,
-          mode: parsed.mode,
-          type: isFile ? 'file' : parsed.type === '5' ? 'dir' : 'unsupported',
-          remaining: parsed.size,
-          hash: createHash('sha256'),
-        };
-        if (isFile) {
-          current.pass = new PassThrough();
-          const entryInfo: TarFileEntryInfo = { name: current.name, size: current.size, mode: current.mode, sha256: '' };
-          const pass = current.pass;
-          current.onFileDone = onFile(entryInfo, pass);
-        }
-        continue;
+        return;
       }
-
-      const take = Math.min(current.remaining, pending.length);
-      if (take > 0) {
-        const data = pending.subarray(0, take);
-        current.hash.update(data);
-        if (current.pass !== undefined) current.pass.write(data);
-        pending = pending.subarray(take);
-        current.remaining -= take;
+      const parsed = parseTarHeader(header);
+      if (!parsed.checksumValid) throw new AppError(ErrorCode.VALIDATION, 'Corrupted tar header (checksum mismatch)');
+      const name = parsed.type === '5' ? parsed.name.replace(/\/$/, '') : parsed.name;
+      if (isUnsafeTarPath(name)) throw new AppError(ErrorCode.VALIDATION, `Unsafe path in archive: ${name}`);
+      if (!Number.isSafeInteger(parsed.size) || parsed.size < 0 || parsed.size > MAX_FILE_SIZE) {
+        throw new AppError(ErrorCode.VALIDATION, 'Invalid archive entry size');
       }
-      if (current.remaining === 0) {
-        const padding = (TAR_BLOCK - (current.size % TAR_BLOCK)) % TAR_BLOCK;
-        if (pending.length < padding) break;
-        pending = pending.subarray(padding);
-        if (current.pass !== undefined) {
-          current.pass.end();
-          current.sha256 = current.hash.digest('hex');
-          if (current.onFileDone !== undefined) await current.onFileDone;
+      if (parsed.type === '2' || parsed.type === '1') throw new AppError(ErrorCode.VALIDATION, `Unsupported link entry in archive: ${name}`);
+      if (parsed.type !== '0' && parsed.type !== '5') {
+        onUnsupported?.(name, parsed.type);
+        throw new AppError(ErrorCode.VALIDATION, `Unsupported archive entry type: ${parsed.type}`);
+      }
+      const entry: TarFileEntryInfo = { name, size: parsed.size, mode: parsed.mode, sha256: '' };
+      const hash = createHash('sha256');
+      const pass = parsed.type === '0' ? new PassThrough() : undefined;
+      pass?.on('error', () => {});
+      const consumed = pass === undefined ? undefined : onFile(entry, pass);
+      // A callback can reject while the producer is awaiting archive bytes.
+      consumed?.catch((error: unknown) => { pass?.destroy(error instanceof Error ? error : new Error(String(error))); });
+      try {
+        let remaining = parsed.size;
+        while (remaining > 0) {
+          const data = await read(Math.min(remaining, 64 * 1024));
+          hash.update(data);
+          if (pass?.destroyed) {
+            await consumed;
+            throw new AppError(ErrorCode.VALIDATION, 'Archive consumer closed early');
+          }
+          if (pass !== undefined && !pass.write(data)) {
+            await once(pass, 'drain');
+          }
+          remaining -= data.length;
         }
-        current = undefined;
-      } else if (take === 0) {
-        break;
+        entry.sha256 = hash.digest('hex');
+        pass?.end();
+        await consumed;
+      } catch (error) {
+        pass?.destroy();
+        throw error;
       }
+      const padding = (TAR_BLOCK - (parsed.size % TAR_BLOCK)) % TAR_BLOCK;
+      if (padding > 0) await read(padding);
     }
+  } finally {
+    input.destroy();
+    source.destroy();
   }
-  throw new AppError(ErrorCode.VALIDATION, 'Archive ended before the end-of-archive marker');
 }
 
 function sha256File(path: string): Promise<string> {
@@ -342,14 +324,16 @@ function collectFiles(rootDir: string, include: readonly string[], excludeDirs: 
 }
 
 function walk(dir: string, excludeDirs: readonly string[], out: string[]): void {
-  const stat = statSync(dir);
+  const stat = lstatSync(dir);
+  if (stat.isSymbolicLink()) throw new AppError(ErrorCode.VALIDATION, `Refusing to back up symlink: ${dir}`);
   if (stat.isFile()) {
     out.push(dir);
     return;
   }
   for (const entry of readdirSync(dir).sort()) {
     const full = join(dir, entry);
-    const stat = statSync(full);
+    const stat = lstatSync(full);
+    if (stat.isSymbolicLink()) throw new AppError(ErrorCode.VALIDATION, `Refusing to back up symlink: ${full}`);
     if (stat.isDirectory()) {
       if (excludeDirs.includes(entry)) continue;
       walk(full, excludeDirs, out);
@@ -365,10 +349,11 @@ export async function createBackupArchive(options: CreateBackupOptions): Promise
     throw new AppError(ErrorCode.CONFIG, `Backup root does not exist: ${rootDir}`);
   }
   const excludeDirs = options.excludeDirs ?? ['logs', 'cache'];
-  const files = collectFiles(rootDir, options.include, excludeDirs);
+  const files = [...new Set(collectFiles(rootDir, options.include, excludeDirs))];
+  if (!files.length) throw new AppError(ErrorCode.VALIDATION, 'No files found to back up');
   const manifest: BackupManifest = {
     tool: 'ts3-manager',
-    version: '0.1.0',
+    version: CLI_VERSION,
     createdAt: new Date().toISOString(),
     ts3Version: options.ts3Version,
     sourceRoot: rootDir,
@@ -394,6 +379,7 @@ export async function createBackupArchive(options: CreateBackupOptions): Promise
   manifest.files.sort((a, b) => a.path.localeCompare(b.path));
 
   const manifestTemp = `${options.archivePath}.${process.pid}.manifest`;
+  mkdirSync(dirname(options.archivePath), { recursive: true });
   writeFileSync(manifestTemp, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   const entries = [
     { name: MANIFEST_NAME, path: manifestTemp, type: 'file' as const, size: statSync(manifestTemp).size },
@@ -404,7 +390,6 @@ export async function createBackupArchive(options: CreateBackupOptions): Promise
       size: file.size,
     })),
   ];
-  mkdirSync(dirname(options.archivePath), { recursive: true });
   try {
     await writeTarGzArchive(entries, options.archivePath);
   } finally {
@@ -423,12 +408,16 @@ export async function inspectBackupArchive(archivePath: string): Promise<Inspect
   let fileCount = 0;
   const manifestBytes: Buffer[] = [];
   const hashes = new Map<string, { sha256: string; size: number }>();
+  const names = new Set<string>();
 
   try {
     await readTarGz(
       archivePath,
       async (entry, content) => {
+        if (names.has(entry.name)) throw new AppError(ErrorCode.VALIDATION, `Duplicate archive entry: ${entry.name}`);
+        names.add(entry.name);
         if (entry.name === MANIFEST_NAME) {
+          if (entry.size > 1024 * 1024) throw new AppError(ErrorCode.VALIDATION, 'Backup manifest too large');
           for await (const chunk of content) manifestBytes.push(chunk as Buffer);
           return;
         }
@@ -449,6 +438,15 @@ export async function inspectBackupArchive(archivePath: string): Promise<Inspect
 
   try {
     manifest = JSON.parse(Buffer.concat(manifestBytes).toString('utf8')) as BackupManifest;
+    if (!manifest || !Array.isArray(manifest.files)) throw new Error('Invalid manifest');
+    const paths = new Set<string>();
+    for (const file of manifest.files) {
+      if (!file || typeof file.path !== 'string' || isUnsafeTarPath(file.path) || paths.has(file.path) ||
+          !Number.isSafeInteger(file.size) || file.size < 0 || typeof file.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(file.sha256)) {
+        throw new Error('Invalid manifest entry');
+      }
+      paths.add(file.path);
+    }
   } catch {
     errors.push('backup-manifest.json is missing or corrupted');
     return { ok: false, manifest: undefined, fileCount, errors };
@@ -511,8 +509,10 @@ export async function restoreBackupArchive(options: RestoreOptions): Promise<Res
         if (!target.startsWith(`${targetRoot}${sep}`)) {
           throw new AppError(ErrorCode.VALIDATION, `Unsafe restore target: ${target}`);
         }
+        assertNoSymlinks(targetRoot, target);
         mkdirSync(dirname(target), { recursive: true });
         await pipeline(content, createWriteStream(target));
+        chmodSync(target, entry.mode & 0o777);
         restored.push(entry.name);
       },
     );
@@ -521,6 +521,26 @@ export async function restoreBackupArchive(options: RestoreOptions): Promise<Res
     return { ok: false, dryRun: false, restoredFiles: restored, errors };
   }
   return { ok: errors.length === 0, dryRun: false, restoredFiles: restored, errors };
+}
+
+function assertNoSymlinks(root: string, target: string): void {
+  let current = resolve(root);
+  // Also reject a symlink in the target root or one of its ancestors.
+  const check = (path: string): void => {
+    try {
+      if (lstatSync(path).isSymbolicLink()) throw new AppError(ErrorCode.VALIDATION, `Refusing symlink restore target: ${path}`);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+  };
+  for (let ancestor = current; ; ancestor = dirname(ancestor)) {
+    check(ancestor);
+    if (ancestor === dirname(ancestor)) break;
+  }
+  for (const part of target.slice(current.length + 1).split(sep)) {
+    current = join(current, part);
+    check(current);
+  }
 }
 
 async function drainStream(stream: PassThrough): Promise<void> {

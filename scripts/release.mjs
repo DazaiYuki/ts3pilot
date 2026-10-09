@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { writeTarGzArchive } from '../apps/ts3-manager/src/system/backupEngine.ts';
 
@@ -64,11 +65,18 @@ for (const file of collectWpFiles(wpRoot)) {
   cpSync(join(wpRoot, file), target);
 }
 const wpArchive = join(releaseDir, `ts3pilot-wp-v${version}.zip`);
-execFileSync('tar', ['-a', '-cf', wpArchive, '-C', wpStageRoot, 'ts3pilot-wp'], { stdio: 'inherit' });
+if (process.platform === 'win32') {
+  execFileSync('tar', ['-a', '-cf', wpArchive, '-C', wpStageRoot, 'ts3pilot-wp'], { stdio: 'inherit' });
+} else {
+  rmSync(wpArchive, { force: true });
+  execFileSync('zip', ['-qr', wpArchive, 'ts3pilot-wp'], { cwd: wpStageRoot, stdio: 'inherit' });
+}
 
 for (const artifact of [cliArchive, join(releaseDir, `ts3-manager-npm-v${version}.tgz`), wpArchive]) {
   const size = statSync(artifact).size;
   console.log(`artifact: ${artifact} (${(size / 1024).toFixed(1)} KiB)`);
+  const digest = createHash('sha256').update(readFileSync(artifact)).digest('hex');
+  writeFileSync(`${artifact}.sha256`, `${digest}  ${artifact.split(/[\\/]/).pop()}\n`);
 }
 console.log('release packaging complete.');
 

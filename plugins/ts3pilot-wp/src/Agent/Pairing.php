@@ -40,8 +40,9 @@ final class Pairing {
 			);
 		}
 
-		$registry = new NodeRegistry( $this->repository );
-		$node_id  = NodeRegistry::generate_node_id();
+		$registry        = new NodeRegistry( $this->repository );
+		$previous_active = $registry->active_id();
+		$node_id         = NodeRegistry::generate_node_id();
 		$registry->upsert(
 			array(
 				'node_id'      => $node_id,
@@ -86,6 +87,8 @@ final class Pairing {
 				'node_id'    => $node_id,
 			);
 		} catch ( AgentException $error ) {
+			$registry->remove( $node_id );
+			$registry->set_active( $previous_active );
 			return array(
 				'ok'      => false,
 				'message' => $error->getMessage(),

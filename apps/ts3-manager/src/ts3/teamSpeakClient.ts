@@ -68,6 +68,7 @@ export interface ChannelMoveInput {
 }
 
 export interface TeamSpeakClient {
+  close?(): Promise<void>;
   readonly kind: 'mock' | 'webquery' | 'serverquery';
   supports(feature: Ts3FeatureValue): boolean;
   status(): Promise<Ts3ServerStatus>;

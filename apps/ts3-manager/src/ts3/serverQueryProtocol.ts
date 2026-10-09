@@ -1,5 +1,5 @@
 import { AppError, ErrorCode } from '../domain/errors.ts';
-import { escapeQueryValue, parseKeyValueLine, splitEntries, unescapeQueryValue } from './escape.ts';
+import { escapeQueryValue, parseKeyValueLine, splitEntries } from './escape.ts';
 
 export interface QueryParams {
   [key: string]: string | number | boolean;
@@ -52,7 +52,7 @@ export function parseErrorLine(line: string): QueryError {
   }
   return {
     id: params.id ?? '',
-    msg: unescapeQueryValue(params.msg ?? ''),
+    msg: params.msg ?? '',
     extra,
   };
 }

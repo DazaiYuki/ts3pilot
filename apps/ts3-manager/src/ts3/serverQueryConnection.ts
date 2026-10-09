@@ -15,7 +15,8 @@ export interface ServerQueryConnectionOptions {
 interface PendingCommand {
   resolve: (response: ParsedQueryResponse) => void;
   reject: (error: unknown) => void;
-  timer: NodeJS.Timeout;
+  timer?: NodeJS.Timeout;
+  text: string;
 }
 
 /**
@@ -30,6 +31,7 @@ interface PendingCommand {
 export class ServerQueryConnection {
   private readonly options: ServerQueryConnectionOptions;
   private socket: Socket | undefined;
+  private connecting: Promise<void> | undefined;
   private buffer = '';
   private connected = false;
   private closed = false;
@@ -46,6 +48,14 @@ export class ServerQueryConnection {
   }
 
   async connect(): Promise<void> {
+    if (this.connected) return;
+    if (this.connecting === undefined) {
+      this.connecting = this.openConnection().finally(() => { this.connecting = undefined; });
+    }
+    return this.connecting;
+  }
+
+  private async openConnection(): Promise<void> {
     if (this.connected) return;
     if (this.closed) {
       throw new AppError(ErrorCode.TS3, 'ServerQuery connection is closed');
@@ -74,6 +84,7 @@ export class ServerQueryConnection {
           reject(error);
           return;
         }
+        socket.removeListener('data', handshake);
         this.connected = true;
         this.buffer = handshakeBuffer;
         socket.on('data', (chunk: Buffer) => this.onData(chunk));
@@ -81,61 +92,52 @@ export class ServerQueryConnection {
         resolve();
       };
 
-      socket.once('error', (error) => {
-        settle(new AppError(ErrorCode.TS3, `ServerQuery connection error: ${error.message}`));
+      socket.on('error', (error) => {
+        const failure = new AppError(ErrorCode.TS3, `ServerQuery connection error: ${error.message}`);
+        settle(failure);
+        this.failAll(failure);
       });
       socket.once('close', () => {
         this.connected = false;
         this.failAll(new AppError(ErrorCode.TS3, 'ServerQuery connection closed'));
       });
 
-      socket.on('data', (chunk: Buffer) => {
+      const handshake = (chunk: Buffer): void => {
         handshakeBuffer += chunk.toString('utf8');
-        if (!bannerSeen) {
+        while (!settled) {
           const newline = handshakeBuffer.indexOf('\n');
           if (newline === -1) return;
-          const banner = handshakeBuffer.slice(0, newline).trim();
+          const line = handshakeBuffer.slice(0, newline).trim();
           handshakeBuffer = handshakeBuffer.slice(newline + 1);
-          if (!banner.startsWith('TS3')) {
-            settle(new AppError(ErrorCode.TS3, `Unexpected ServerQuery banner: ${banner}`));
-            return;
+          if (line.length === 0) continue;
+          if (!bannerSeen) {
+            if (line !== 'TS3') {
+              settle(new AppError(ErrorCode.TS3, `Unexpected ServerQuery banner: ${line}`));
+              return;
+            }
+            bannerSeen = true;
+            socket.write(buildCommand('login', { client_login_name: this.options.username, client_login_password: this.options.password }));
+            continue;
           }
-          bannerSeen = true;
-          socket.write(
-            buildCommand('login', {
-              client_login_name: this.options.username,
-              client_login_password: this.options.password,
-            }),
-          );
-        } else if (!loginDone) {
-          const line = takeLine(handshakeBuffer);
-          if (line === undefined) return;
+          if (!loginDone && line.startsWith('Welcome to the TeamSpeak')) continue;
           if (!line.startsWith('error ')) {
-            settle(new AppError(ErrorCode.TS3, `Unexpected login response: ${line}`));
+            settle(new AppError(ErrorCode.TS3, `Unexpected handshake response: ${line}`));
             return;
           }
-          const loginError = parseErrorLine(line);
-          if (loginError.id !== '0') {
-            settle(new AppError(ErrorCode.AUTH, `ServerQuery login failed: ${loginError.msg}`));
+          const error = parseErrorLine(line);
+          if (error.id !== '0') {
+            settle(new AppError(loginDone ? ErrorCode.TS3 : ErrorCode.AUTH, `ServerQuery ${loginDone ? 'use' : 'login'} failed: ${error.msg}`));
             return;
           }
-          loginDone = true;
-          socket.write(buildCommand('use', { sid: this.options.sid ?? 1 }));
-        } else {
-          const line = takeLine(handshakeBuffer);
-          if (line === undefined) return;
-          if (!line.startsWith('error ')) {
-            settle(new AppError(ErrorCode.TS3, `Unexpected use response: ${line}`));
-            return;
+          if (!loginDone) {
+            loginDone = true;
+            socket.write(buildCommand('use', { sid: this.options.sid ?? 1 }));
+          } else {
+            settle();
           }
-          const useError = parseErrorLine(line);
-          if (useError.id !== '0') {
-            settle(new AppError(ErrorCode.TS3, `ServerQuery use failed: ${useError.msg}`));
-            return;
-          }
-          settle();
         }
-      });
+      };
+      socket.on('data', handshake);
     });
   }
 
@@ -144,19 +146,21 @@ export class ServerQueryConnection {
     if (this.socket === undefined) {
       throw new AppError(ErrorCode.TS3, 'ServerQuery socket is unavailable');
     }
-    const socket = this.socket;
+    const text = buildCommand(name, params);
     return new Promise<ParsedQueryResponse>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.rejectHead(new AppError(ErrorCode.NETWORK, 'ServerQuery command timed out'));
-      }, this.options.timeoutMs ?? 8000);
-      this.queue.push({ resolve, reject, timer });
-      try {
-        socket.write(buildCommand(name, params));
-      } catch (error) {
-        clearTimeout(timer);
-        reject(error);
-      }
+      this.queue.push({ resolve, reject, text });
+      if (this.queue.length === 1) this.sendHead();
     });
+  }
+
+  private sendHead(): void {
+    const pending = this.queue[0];
+    if (pending === undefined || this.socket === undefined) return;
+    pending.timer = setTimeout(() => {
+      this.failAll(new AppError(ErrorCode.NETWORK, 'ServerQuery command timed out'));
+      this.socket?.destroy();
+    }, this.options.timeoutMs ?? 8000);
+    this.socket.write(pending.text);
   }
 
   async close(): Promise<void> {
@@ -218,6 +222,7 @@ export class ServerQueryConnection {
     if (pending === undefined) return;
     clearTimeout(pending.timer);
     pending.resolve(response);
+    this.sendHead();
   }
 
   private rejectHead(error: unknown): void {
@@ -232,10 +237,4 @@ export class ServerQueryConnection {
       this.rejectHead(error);
     }
   }
-}
-
-function takeLine(buffer: string): string | undefined {
-  const newline = buffer.indexOf('\n');
-  if (newline === -1) return undefined;
-  return buffer.slice(0, newline).trim();
 }

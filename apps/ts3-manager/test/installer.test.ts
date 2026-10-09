@@ -61,7 +61,8 @@ test('windows development install runs in mock mode and creates the EULA marker'
     assert.equal(existsSync(join(installPath, EULA_MARKER)), true);
     assert.equal(calls.length, 0);
     assert.equal(result.firewall.tool, 'none');
-    assert.ok((result.systemdUnit ?? '').includes('NoNewPrivileges=true'));
+    if (process.platform === 'win32') assert.equal(result.systemdUnit, undefined);
+    else assert.ok((result.systemdUnit ?? '').includes('NoNewPrivileges=true'));
   } finally {
     cleanupDir(dir);
   }
@@ -82,7 +83,7 @@ test('linux development mode also uses the mock path', async () => {
   }
 });
 
-test('production install orchestrates download, tar, EULA marker, firewall and systemd', async () => {
+test('production install orchestrates download, tar, EULA marker, firewall and systemd', { skip: process.platform === 'win32' }, async () => {
   const dir = tempDir('install-real');
   try {
     const installPath = join(dir, 'ts3');
@@ -115,7 +116,7 @@ test('production install orchestrates download, tar, EULA marker, firewall and s
     assert.equal(existsSync(join(installPath, EULA_MARKER)), true);
     assert.equal(result.firewall.tool, 'ufw');
     assert.ok(result.firewall.opened.includes('9987/udp'));
-    assert.ok(result.firewall.opened.includes('10443/tcp'));
+    assert.deepEqual(result.firewall.opened, ['9987/udp', '30033/tcp']);
     for (const port of TS3_FIREWALL_PORTS) {
       assert.ok(calls.some((call) => call.bin === 'ufw' && call.args[0] === 'allow' && call.args[1] === `${port.port}/${port.proto}`));
     }
@@ -126,14 +127,14 @@ test('production install orchestrates download, tar, EULA marker, firewall and s
   }
 });
 
-test('firewalld is used when ufw is unavailable', async () => {
+test('firewalld is used when ufw is unavailable', { skip: process.platform === 'win32' }, async () => {
   const dir = tempDir('install-fw');
   try {
     const calls: Call[] = [];
     const deps = makeDeps({}, calls);
     deps.runProcess = async (bin, args) => {
       calls.push({ bin, args: [...args] });
-      if (bin === 'ufw') return { exitCode: 1, stdout: '', stderr: 'not found', timedOut: false, overflow: false };
+      if (bin === 'ufw') throw Object.assign(new Error('ufw not found'), { code: 'ENOENT' });
       if (bin === 'firewall-cmd' && args[0] === '--state') return { exitCode: 0, stdout: 'running', stderr: '', timedOut: false, overflow: false };
       return { exitCode: 0, stdout: '', stderr: '', timedOut: false, overflow: false };
     };
@@ -149,7 +150,7 @@ test('firewalld is used when ufw is unavailable', async () => {
   }
 });
 
-test('source-url override and checksum verification', async () => {
+test('source-url override and checksum verification', { skip: process.platform === 'win32' }, async () => {
   const dir = tempDir('install-source');
   try {
     const installPath = join(dir, 'ts3');
@@ -197,7 +198,7 @@ test('source-url override and checksum verification', async () => {
   }
 });
 
-test('install refuses a non-empty target without force', async () => {
+test('install refuses a non-empty target without force', { skip: process.platform === 'win32' }, async () => {
   const dir = tempDir('install-force');
   try {
     const installPath = join(dir, 'ts3');

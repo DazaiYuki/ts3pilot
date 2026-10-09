@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { chmodSync, chownSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { AppError, ErrorCode } from '../domain/errors.ts';
@@ -35,16 +35,23 @@ export function readConfig(path = defaultConfigPath()): AppConfig {
 export function ensureConfig(path = defaultConfigPath()): AppConfig {
   if (existsSync(path)) return readConfig(path);
   const config = defaultConfig();
-  config.dataDir = defaultDataDir();
+  config.dataDir = dirname(path);
   writeConfig(path, config);
   return config;
 }
 
 export function writeConfig(path: string, config: AppConfig): void {
-  mkdirSync(dirname(path), { recursive: true });
+  const previous = existsSync(path) ? statSync(path) : undefined;
+  mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const temporary = `${path}.${process.pid}.tmp`;
-  writeFileSync(temporary, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
-  renameSync(temporary, path);
+  try {
+    writeFileSync(temporary, `${JSON.stringify(config, null, 2)}\n`, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
+    chmodSync(temporary, 0o600);
+    if (previous && process.getuid?.() === 0) chownSync(temporary, previous.uid, previous.gid);
+    renameSync(temporary, path);
+  } finally {
+    rmSync(temporary, { force: true });
+  }
 }
 
 export function updateConfig(path: string, updater: (config: AppConfig) => AppConfig): AppConfig {

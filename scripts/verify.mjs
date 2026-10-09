@@ -26,6 +26,7 @@ steps.push(['typecheck', () => run(process.platform === 'win32' ? 'npm.cmd' : 'n
 steps.push(['test', () => run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['test'])]);
 steps.push(['build', () => run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build'])]);
 steps.push(['php lint', () => run('php', ['plugins/ts3pilot-wp/tests/lint-all.php'])]);
+steps.push(['plugin bootstrap', () => run('php', ['plugins/ts3pilot-wp/tests/boot-plugin.php'])]);
 steps.push([
   'phpcs',
   () =>

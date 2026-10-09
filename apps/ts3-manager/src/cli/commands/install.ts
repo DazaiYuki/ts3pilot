@@ -1,7 +1,6 @@
-import { createWriteStream } from 'node:fs';
-import { Readable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
+import { downloadFile } from '../../services/download.ts';
 import { AppError, ErrorCode } from '../../domain/errors.ts';
+import { updateConfig } from '../../config/config.ts';
 import {
   DEFAULT_TS3_VERSION,
   MAX_ARCHIVE_BYTES,
@@ -38,7 +37,7 @@ export async function runInstallCommand(ctx: CliContext, flags: Record<string, s
     mode: ctx.config.mode,
     logger: ctx.logger,
     runProcess: (bin, args, opts) => runProcess(bin, args, opts),
-    download: downloadFile,
+    download: (url, path) => downloadFile(url, path, MAX_ARCHIVE_BYTES),
   };
 
   const result = await runInstall(
@@ -55,6 +54,13 @@ export async function runInstallCommand(ctx: CliContext, flags: Record<string, s
     },
     deps,
   );
+
+  if (!result.mocked) {
+    updateConfig(ctx.cfgPath, config => {
+      config.ts3.installPath = result.installPath;
+      return config;
+    });
+  }
 
   printLine(result.mocked ? 'install (mock): completed in development/mock mode' : 'install completed');
   printLine(`version: ${result.version}`);
@@ -76,20 +82,4 @@ export async function runInstallCommand(ctx: CliContext, flags: Record<string, s
     printLine('  3. systemctl daemon-reload && systemctl enable --now ts3server.service');
     printLine('  4. Run "ts3-manager doctor" to verify.');
   }
-}
-
-async function downloadFile(url: string, destPath: string): Promise<void> {
-  const response = await fetch(url, {
-    redirect: 'follow',
-    signal: AbortSignal.timeout(300000),
-  });
-  if (!response.ok || response.body === null) {
-    throw new AppError(ErrorCode.NETWORK, `Download failed: HTTP ${response.status} for ${url}`, { httpStatus: 502 });
-  }
-  const contentLength = Number(response.headers.get('content-length') ?? 0);
-  if (contentLength > MAX_ARCHIVE_BYTES) {
-    throw new AppError(ErrorCode.VALIDATION, `Archive too large (${contentLength} bytes)`);
-  }
-  const body = response.body as unknown as import('node:stream/web').ReadableStream;
-  await pipeline(Readable.fromWeb(body), createWriteStream(destPath));
 }

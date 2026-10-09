@@ -29,10 +29,6 @@ export interface FirewallPort {
 export const TS3_FIREWALL_PORTS: readonly FirewallPort[] = [
   { port: 9987, proto: 'udp', comment: 'Voice' },
   { port: 30033, proto: 'tcp', comment: 'File Transfer' },
-  { port: 10011, proto: 'tcp', comment: 'ServerQuery raw' },
-  { port: 10022, proto: 'tcp', comment: 'ServerQuery SSH' },
-  { port: 10080, proto: 'tcp', comment: 'WebQuery HTTP' },
-  { port: 10443, proto: 'tcp', comment: 'WebQuery HTTPS' },
 ];
 
 export interface InstallerDependencies {
@@ -90,10 +86,11 @@ export function validateVersion(version: string): void {
 
 export async function runInstall(options: InstallOptions, deps: InstallerDependencies): Promise<InstallResult> {
   validateVersion(options.version);
-  const installPath = resolve(options.installPath);
-  if (installPath.length === 0) {
+  if (options.installPath.trim().length === 0) {
     throw new AppError(ErrorCode.USER, 'installPath is required');
   }
+  const installPath = resolve(options.installPath);
+  if (installPath === dirname(installPath)) throw new AppError(ErrorCode.USER, 'Refusing installation into the filesystem root');
   if (!options.acceptEula) {
     throw new AppError(
       ErrorCode.USER,
@@ -101,21 +98,32 @@ export async function runInstall(options: InstallOptions, deps: InstallerDepende
     );
   }
 
+  const downloadUrl = options.sourceUrl ?? buildDownloadUrl(options.version);
+  const source = new URL(downloadUrl);
+  if (source.protocol !== 'https:' || source.username || source.password) {
+    throw new AppError(ErrorCode.VALIDATION, 'Installation source must be HTTPS without embedded credentials');
+  }
+  if (options.expectedSha256 && !/^[a-f0-9]{64}$/i.test(options.expectedSha256)) {
+    throw new AppError(ErrorCode.VALIDATION, 'expectedSha256 must be a SHA-256 digest');
+  }
   const useMock = deps.platform === 'win32' || deps.mode === 'development';
+  if (deps.mode === 'production' && (deps.platform !== 'linux' || process.arch !== 'x64')) {
+    throw new AppError(ErrorCode.UNSUPPORTED_PLATFORM, 'Production TS3 installation requires Linux x86_64');
+  }
   if (useMock) {
     return mockInstall(options, installPath, deps);
   }
+  const systemdUnit = generateServerUnit({ user: options.user ?? 'ts3', group: options.group ?? 'ts3', installPath });
 
   if (existsSync(installPath) && readdirSync(installPath).length > 0 && options.force !== true) {
     throw new AppError(ErrorCode.USER, `Install path is not empty: ${installPath}. Use --force to overwrite.`);
   }
 
-  const downloadUrl = options.sourceUrl ?? buildDownloadUrl(options.version);
   const parent = dirname(installPath);
   mkdirSync(parent, { recursive: true });
   const stagingDir = `${installPath}.staging-${process.pid}`;
   mkdirSync(stagingDir, { recursive: true });
-  const archivePath = join(stagingDir, basename(downloadUrl));
+  const archivePath = join(stagingDir, 'server.tar.bz2');
 
   try {
     deps.logger.info('downloading TeamSpeak server archive', { url: downloadUrl });
@@ -137,19 +145,14 @@ export async function runInstall(options: InstallOptions, deps: InstallerDepende
     }
 
     mkdirSync(installPath, { recursive: true });
-    const extractedRoot = findExtractedRoot(stagingDir, basename(downloadUrl));
-    for (const entry of readdirSync(extractedRoot)) {
+    const extractedRoot = findExtractedRoot(stagingDir, 'server.tar.bz2');
+    for (const entry of readdirSync(extractedRoot).filter(name => extractedRoot !== stagingDir || name !== 'server.tar.bz2')) {
       renameSync(join(extractedRoot, entry), join(installPath, entry));
     }
     writeFileSync(join(installPath, EULA_MARKER), `accepted_at=${new Date().toISOString()}\n`, 'utf8');
     deps.logger.info('installation files moved and EULA marker created', { installPath });
 
     const firewall = await configureFirewall(deps, options.setupFirewall === true);
-    const systemdUnit = generateServerUnit({
-      user: options.user ?? 'ts3',
-      group: options.group ?? 'ts3',
-      installPath,
-    });
 
     return {
       mocked: false,
@@ -179,7 +182,7 @@ async function mockInstall(options: InstallOptions, installPath: string, deps: I
   });
   mkdirSync(installPath, { recursive: true });
   writeFileSync(join(installPath, EULA_MARKER), `accepted_at=${new Date().toISOString()}\n`, 'utf8');
-  const systemdUnit = generateServerUnit({
+  const systemdUnit = process.platform === 'win32' ? undefined : generateServerUnit({
     user: options.user ?? 'ts3',
     group: options.group ?? 'ts3',
     installPath,
@@ -199,8 +202,15 @@ async function configureFirewall(deps: InstallerDependencies, enabled: boolean):
   if (!enabled) {
     return { configured: false, tool: 'none', opened: [] };
   }
-  const ufwStatus = await deps.runProcess('ufw', ['status'], { timeoutMs: 10000 });
-  if (ufwStatus.exitCode === 0) {
+  const probe = async (bin: string, args: readonly string[]): Promise<ProcessResult | undefined> => {
+    try { return await deps.runProcess(bin, args, { timeoutMs: 10000 }); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+      throw error;
+    }
+  };
+  const ufwStatus = await probe('ufw', ['status']);
+  if (ufwStatus?.exitCode === 0) {
     const opened: string[] = [];
     for (const rule of TS3_FIREWALL_PORTS) {
       const spec = `${rule.port}/${rule.proto}`;
@@ -215,8 +225,8 @@ async function configureFirewall(deps: InstallerDependencies, enabled: boolean):
     return { configured: opened.length > 0, tool: 'ufw', opened };
   }
 
-  const firewalldState = await deps.runProcess('firewall-cmd', ['--state'], { timeoutMs: 10000 });
-  if (firewalldState.exitCode === 0) {
+  const firewalldState = await probe('firewall-cmd', ['--state']);
+  if (firewalldState?.exitCode === 0) {
     const opened: string[] = [];
     for (const rule of TS3_FIREWALL_PORTS) {
       const spec = `${rule.port}/${rule.proto}`;

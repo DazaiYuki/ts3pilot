@@ -259,3 +259,20 @@ test('backup engine streams large files instead of buffering them whole', async 
     cleanupDir(dir);
   }
 });
+
+test('invalid manifest shape and duplicate archive names fail inspection', async () => {
+  const dir = tempDir('invalid-manifest');
+  try {
+    const archive = join(dir, 'bad.tar.gz');
+    craftTarGz(archive, [{ name: 'backup-manifest.json', data: Buffer.from('{"files":"not-an-array"}'), type: '0' }]);
+    const invalid = await inspectBackupArchive(archive);
+    assert.equal(invalid.ok, false);
+    craftTarGz(archive, [
+      { name: 'backup-manifest.json', data: Buffer.from('{"files":[]}'), type: '0' },
+      { name: 'backup-manifest.json', data: Buffer.from('{"files":[]}'), type: '0' },
+    ]);
+    const duplicate = await inspectBackupArchive(archive);
+    assert.equal(duplicate.ok, false);
+    assert.match(duplicate.errors.join(' '), /Duplicate archive entry/);
+  } finally { cleanupDir(dir); }
+});

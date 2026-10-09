@@ -51,6 +51,7 @@ final class ClientInfoTest extends TestCase {
 		$this->assertSame( 'serverquery', (string) ( $info['ts3Provider'] ?? '' ) );
 		$this->assertTrue( (bool) ( $info['remoteMode'] ?? false ) );
 		$this->assertCount( 1, $GLOBALS['__ts3pilot_http_calls'] );
+		$this->assertSame( '', $GLOBALS['__ts3pilot_http_calls'][0]['args']['body'] );
 	}
 
 	public function test_info_throws_on_agent_error(): void {

@@ -20,10 +20,10 @@ export function runSystemdCommand(ctx: CliContext, positionals: readonly string[
     if (installPath.length === 0) throw new AppError(ErrorCode.USER, 'ts3server unit requires --install-path or ts3.installPath');
     unit = generateServerUnit({ user, group, installPath, startScript: ctx.config.ts3.startScript });
   } else if (target === 'ts3-agent') {
-    const execStart = flagString(flags, 'exec-start') ?? 'ts3-manager agent';
+    const execStart = flagString(flags, 'exec-start') ?? '/opt/ts3pilot/ts3pilot agent';
     const configPath = flagString(flags, 'config') ?? ctx.cfgPath;
     const installPath = ctx.config.ts3.installPath;
-    unit = generateAgentUnit({ user, group, execStart, configPath, installPath });
+    unit = generateAgentUnit({ user, group, execStart, configPath, installPath, dataDir: ctx.config.dataDir });
   } else {
     throw new AppError(ErrorCode.USER, 'usage: systemd generate <ts3server|ts3-agent>');
   }

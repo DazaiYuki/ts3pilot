@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1 — production installation and integration fixes
+
+Fix shipped WordPress boot and GET transport, real ServerQuery handshake and escaping, verified atomic upgrades, private configuration and systemd generation. Add release artifact, shell installer, supported Linux userland and real TS3/WordPress integration checks. See [release notes](docs/release-notes-v0.4.1.md).
+
+
 All notable changes to TS3 Community Operations Suite are documented here.
 
 ## [0.4.0] - 2026-08-28

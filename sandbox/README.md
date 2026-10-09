@@ -1,26 +1,16 @@
-# TS3 集成测试沙盒
+# 真实 TS3 / WordPress 集成验证
 
-## 已验证版本记录
+先构建发布包，阅读并接受 TeamSpeak Server 官方许可，再显式运行：
 
-本仓库**尚未**在真实 TS3 实例上完成 WebQuery/ServerQuery 联调验证，因此：
+```bash
+npm run release
+npm run test:integration -- --accept-eula
+```
 
-- `docker-compose.ts3.yml` 中的镜像名/tag 与环境变量是占位符（TODO），
-  必须对照官方文档验证后使用；
-- WebQuery 客户端默认拒绝执行（`ts3.query.webQuery.verified=false`）；
-- ServerQuery 客户端已实现转义/解析与命令映射，但同样需要真实实例联调验证。
+`integration.mjs` 创建独立 Docker 网络，使用官方 `teamspeak:3.13.7`、WordPress、MariaDB 和 Ubuntu 24.04 镜像。Agent 以非 root 身份运行，只监听与 WordPress 共享命名空间的回环地址；不向宿主或公网暴露 Agent 端口。测试验证发布 ZIP 激活、单次配对、生产模式真实 ServerQuery、状态/频道管理、前台脱敏、REST 授权，以及原生 Ubuntu 新建和只读接管。
 
-## 验证步骤（验证后请更新此文件与 compose）
+测试凭据只保存在工作区忽略的私有 `tmp/` 中，不打印到日志。脚本只删除自己创建的容器、卷和网络。成功记录 `dist/release/integration-results.json`，包含实际镜像摘要与验证时间；失败不生成成功报告。
 
-1. 确认官方镜像与许可证接受方式，更新 compose。
-2. `docker compose -f sandbox/docker-compose.ts3.yml up -d`
-3. 用 ServerQuery/WebQuery 获取初始 serveradmin 凭据（按官方文档）。
-4. 创建低权限登录（不要使用 master serveradmin 作为长期凭据）。
-5. 配置 `ts3.query.username/password`（或 WebQuery key + `verified=true`）。
-6. `npm run cli -- doctor` 确认端口与 Agent 状态。
-7. 运行 `npm test` 中的集成测试并记录结果。
+原生新建需要官方 `files.teamspeak-services.com` HTTPS 下载权限；受限云环境应在环境设置中允许该域名。可在 GitHub Actions 手动运行 CI，并对当次测试显式勾选 `accept_ts3_license`。不要把网络拒绝当成联调通过。
 
-## 记录模板
-
-| 日期 | 镜像 tag | TS3 版本 | WebQuery 验证 | ServerQuery 验证 | 备注 |
-| --- | --- | --- | --- | --- | --- |
-| — | 未验证 | — | 否 | 否 | 待官方文档核对 |
+真实 WebQuery、语音客户端登录/身份核验、踢人和封禁尚需专门场景验证，不能由 Query 状态/频道测试代替。`docker-compose.ts3.yml` 是独立手动沙盒入口，默认不暴露公网管理端口。

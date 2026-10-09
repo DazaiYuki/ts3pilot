@@ -52,7 +52,10 @@ host control plane and optional WordPress integration.
    optional firewall):
 
    ```bash
-   sudo ts3pilot install --accept-eula --install-path /srv/ts3 --setup-firewall
+   # Create the service account/config and select production mode as described in docs/deployment.md.
+   # The default development mode performs a mock installation.
+   sudo ts3pilot install --accept-eula --install-path /srv/ts3 \
+     --expected-sha256 '<trusted SHA-256 of the official archive>' --config /var/lib/ts3pilot/config.json
    ```
 
 3. `ts3pilot doctor`, then `ts3pilot api enable` and copy the **pairing code**.
@@ -63,6 +66,7 @@ host control plane and optional WordPress integration.
 ### Scenario B: adopt an existing server
 
 ```bash
+ts3pilot config set mode production
 ts3pilot config set ts3.installPath /srv/ts3
 ts3pilot adopt          # read-only analysis, never modifies files
 ts3pilot doctor

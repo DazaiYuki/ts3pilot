@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# TS3Pilot — China-friendly one-line installer (jsDelivr + npmmirror).
+# TS3Pilot — China-friendly installer (jsDelivr metadata + verified mirrors).
 #   curl -sSL https://cdn.jsdelivr.net/gh/DazaiYuki/ts3pilot@main/scripts/install-cn.sh | sudo bash
 #
 set -euo pipefail

@@ -176,3 +176,9 @@ test('resolveBinaryPath falls back when argv path is missing', () => {
     cleanupDir(dir);
   }
 });
+
+test('update rejects unknown actions instead of performing an unintended self-update', async () => {
+  const { runUpdateCommand } = await import('../src/cli/commands/update.ts');
+  const context = {} as import('../src/cli/context.ts').CliContext;
+  await assert.rejects(runUpdateCommand(context, ['ts3'], {}), /usage: update/);
+});

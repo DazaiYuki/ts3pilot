@@ -14,7 +14,7 @@ import { runServiceCommand } from './commands/service.ts';
 import { runUpdateCommand } from './commands/update.ts';
 import { runSystemdCommand } from './commands/systemd.ts';
 import { runVersionCommand } from './commands/version.ts';
-import { createCliContext } from './context.ts';
+import { createCliContext, type CliContext } from './context.ts';
 import { printError, printLine } from './print.ts';
 import { runTui } from './tui.ts';
 
@@ -56,7 +56,11 @@ export async function main(argv: readonly string[]): Promise<number> {
   const configPath = typeof flags.config === 'string' ? flags.config : undefined;
   if (command === undefined) {
     const ctx = createCliContext({ configPath });
-    await runTui(ctx);
+    try {
+      await runTui(ctx);
+    } finally {
+      await ctx.close?.();
+    }
     return 0;
   }
   if (command === 'version') {
@@ -68,8 +72,9 @@ export async function main(argv: readonly string[]): Promise<number> {
     return 0;
   }
 
+  let ctx: CliContext | undefined;
   try {
-    const ctx = createCliContext({ configPath });
+    ctx = createCliContext({ configPath });
     switch (command) {
       case 'config':
         runConfigCommand(positionals.slice(1), ctx.cfgPath);
@@ -126,6 +131,8 @@ export async function main(argv: readonly string[]): Promise<number> {
       printError(`error [${toErrorEnvelope(error).code}]: ${toErrorEnvelope(error).message}`);
     }
     return 1;
+  } finally {
+    await ctx?.close?.();
   }
 }
 
