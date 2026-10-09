@@ -13,10 +13,11 @@ for (const [stream, destination] of [[child.stdout, process.stdout], [child.stde
 child.on('error', error => { console.error(error.message); process.exitCode = 1; });
 child.on('close', code => {
   if (code !== 0) {
-    const lines = output.split('\n');
-    const indices = lines.flatMap((line, index) => /not ok|✖|AssertionError|Error:|FAIL/.test(line) ? [index] : []);
-    const details = indices.length ? indices.map(index => lines.slice(Math.max(0, index - 2), index + 35).join('\n')).join('\n') : output.slice(-20000);
-    console.log(`::error::${details.slice(0, 40000).replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A')}`);
+    const failureSection = output.lastIndexOf('✖ failing tests:');
+    const details = failureSection >= 0 ? output.slice(failureSection) : output.slice(-20000);
+    for (let offset = 0; offset < details.length; offset += 3500) {
+      console.log(`::error::${details.slice(offset, offset + 3500).replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A')}`);
+    }
     process.exitCode = code ?? 1;
   }
 });

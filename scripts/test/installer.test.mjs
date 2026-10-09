@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
 
@@ -8,6 +8,7 @@ const root = resolve(new URL('../..', import.meta.url).pathname);
 const version = JSON.parse(readFileSync(join(root, 'package.json'))).version;
 
 test('the shell installer preserves config, replaces a running binary and rejects a corrupt download', () => {
+  mkdirSync(join(root, 'tmp'), { recursive: true });
   const fixtures = mkdtempSync(join(root, 'tmp', 'installer-fixture-'));
   try {
     writeFileSync(join(fixtures, 'curl'), `#!/bin/sh

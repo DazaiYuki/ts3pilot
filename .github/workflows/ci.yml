@@ -188,7 +188,7 @@ jobs:
           mv apps/ts3-manager/dist/pkg/ts3pilot apps/ts3-manager/dist/pkg/ts3pilot-linux-x64
           chmod 755 apps/ts3-manager/dist/pkg/ts3pilot-linux-x64
       - name: New native Ubuntu server, existing server, WordPress pairing and management
-        run: npm run test:integration -- --accept-eula
+        run: node scripts/ci-test.mjs run test:integration -- --accept-eula
       - uses: actions/upload-artifact@v4
         if: success()
         with:

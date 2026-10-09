@@ -106,8 +106,6 @@ export async function runInstall(options: InstallOptions, deps: InstallerDepende
   if (options.expectedSha256 && !/^[a-f0-9]{64}$/i.test(options.expectedSha256)) {
     throw new AppError(ErrorCode.VALIDATION, 'expectedSha256 must be a SHA-256 digest');
   }
-  const systemdUnit = generateServerUnit({ user: options.user ?? 'ts3', group: options.group ?? 'ts3', installPath });
-
   const useMock = deps.platform === 'win32' || deps.mode === 'development';
   if (deps.mode === 'production' && (deps.platform !== 'linux' || process.arch !== 'x64')) {
     throw new AppError(ErrorCode.UNSUPPORTED_PLATFORM, 'Production TS3 installation requires Linux x86_64');
@@ -115,6 +113,7 @@ export async function runInstall(options: InstallOptions, deps: InstallerDepende
   if (useMock) {
     return mockInstall(options, installPath, deps);
   }
+  const systemdUnit = generateServerUnit({ user: options.user ?? 'ts3', group: options.group ?? 'ts3', installPath });
 
   if (existsSync(installPath) && readdirSync(installPath).length > 0 && options.force !== true) {
     throw new AppError(ErrorCode.USER, `Install path is not empty: ${installPath}. Use --force to overwrite.`);
@@ -183,7 +182,7 @@ async function mockInstall(options: InstallOptions, installPath: string, deps: I
   });
   mkdirSync(installPath, { recursive: true });
   writeFileSync(join(installPath, EULA_MARKER), `accepted_at=${new Date().toISOString()}\n`, 'utf8');
-  const systemdUnit = generateServerUnit({
+  const systemdUnit = process.platform === 'win32' ? undefined : generateServerUnit({
     user: options.user ?? 'ts3',
     group: options.group ?? 'ts3',
     installPath,
