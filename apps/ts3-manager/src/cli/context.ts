@@ -12,6 +12,7 @@ export interface CliContext {
   logger: Logger;
   services: ServiceManager;
   ts3(): TeamSpeakClient;
+  close?(): Promise<void>;
 }
 
 export function createCliContext(options: { configPath?: string } = {}): CliContext {
@@ -25,6 +26,9 @@ export function createCliContext(options: { configPath?: string } = {}): CliCont
     config,
     logger,
     services,
+    async close() {
+      await cachedTs3?.close?.();
+    },
     ts3() {
       if (cachedTs3 === undefined) {
         cachedTs3 = createTs3Client(readConfig(cfgPath), logger);

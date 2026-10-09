@@ -1,8 +1,8 @@
 {
   "name": "ts3pilot-suite",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
-  "description": "TS3 Community Operations Suite — local-first TeamSpeak 3 management toolchain (CLI/Agent) with an optional WordPress control plane.",
+  "description": "TS3 Community Operations Suite \u2014 local-first TeamSpeak 3 management toolchain (CLI/Agent) with an optional WordPress control plane.",
   "type": "module",
   "license": "Apache-2.0",
   "engines": {
@@ -23,6 +23,9 @@
     "build-release": "node scripts/release.mjs",
     "publish:npm": "node scripts/npm-pack-existing.mjs",
     "cli": "node apps/ts3-manager/src/cli/index.ts",
-    "package": "node scripts/package.mjs"
+    "package": "node scripts/package.mjs",
+    "verify:release": "node --test scripts/test/*.test.mjs",
+    "test:compat": "node scripts/compat-linux.mjs",
+    "test:integration": "node sandbox/integration.mjs"
   }
 }

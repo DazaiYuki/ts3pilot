@@ -1,7 +1,6 @@
 import { AppError, ErrorCode } from '../domain/errors.ts';
 import type { Ts3Channel, Ts3Client, Ts3ServerStatus } from '../domain/models.ts';
 import type { AppConfig } from '../domain/schemas.ts';
-import { unescapeQueryValue } from './escape.ts';
 import { ServerQueryConnection } from './serverQueryConnection.ts';
 import { assertOk } from './serverQueryProtocol.ts';
 import type {
@@ -49,6 +48,11 @@ export class ServerQueryTeamSpeakClient implements TeamSpeakClient {
     this.config = config;
   }
 
+  async close(): Promise<void> {
+    await this.connection?.close();
+    this.connection = undefined;
+  }
+
   supports(feature: Ts3FeatureValue): boolean {
     return SUPPORTED.includes(feature);
   }
@@ -74,10 +78,10 @@ export class ServerQueryTeamSpeakClient implements TeamSpeakClient {
     const first = response.entries[0] ?? {};
     return {
       online: true,
-      name: first.virtualserver_name !== undefined ? unescapeQueryValue(first.virtualserver_name) : undefined,
+      name: first.virtualserver_name,
       clientsOnline: toNumber(first.virtualserver_clientsonline),
       maxClients: toNumber(first.virtualserver_maxclients),
-      version: first.virtualserver_version !== undefined ? unescapeQueryValue(first.virtualserver_version) : undefined,
+      version: first.virtualserver_version,
       uptimeSec: toNumber(first.virtualserver_uptime),
     };
   }
@@ -86,10 +90,10 @@ export class ServerQueryTeamSpeakClient implements TeamSpeakClient {
     const response = assertOk(await (await this.conn()).command('clientlist'));
     return response.entries.map((entry) => ({
       clientId: toNumber(entry.clid) ?? 0,
-      nickname: unescapeQueryValue(entry.client_nickname ?? ''),
+      nickname: entry.client_nickname ?? '',
       channelId: toNumber(entry.cid) ?? 0,
       clientType: toNumber(entry.client_type) ?? 0,
-      uniqueId: entry.client_unique_identifier !== undefined ? unescapeQueryValue(entry.client_unique_identifier) : undefined,
+      uniqueId: entry.client_unique_identifier,
       away: entry.client_away === '1',
     }));
   }
@@ -98,8 +102,8 @@ export class ServerQueryTeamSpeakClient implements TeamSpeakClient {
     const response = assertOk(await (await this.conn()).command('clientinfo', { clid: clientId }));
     const first = response.entries[0] ?? {};
     return {
-      description: first.client_description !== undefined ? unescapeQueryValue(first.client_description) : undefined,
-      awayMessage: first.client_away_message !== undefined ? unescapeQueryValue(first.client_away_message) : undefined,
+      description: first.client_description,
+      awayMessage: first.client_away_message,
     };
   }
 
@@ -107,11 +111,11 @@ export class ServerQueryTeamSpeakClient implements TeamSpeakClient {
     const response = assertOk(await (await this.conn()).command('channellist'));
     return response.entries.map((entry) => ({
       channelId: toNumber(entry.cid) ?? 0,
-      name: unescapeQueryValue(entry.channel_name ?? ''),
+      name: entry.channel_name ?? '',
       parentId: toNumber(entry.pid) ?? 0,
       order: toNumber(entry.channel_order),
       totalClients: toNumber(entry.total_clients),
-      topic: entry.channel_topic !== undefined ? unescapeQueryValue(entry.channel_topic) : undefined,
+      topic: entry.channel_topic,
     }));
   }
 

@@ -3,7 +3,7 @@
  * Plugin Name: TS3Pilot
  * Plugin URI: https://github.com/ts3pilot/ts3pilot-wp
  * Description: Optional WordPress control plane for TeamSpeak 3 servers managed by the ts3-manager agent (status cards, client management, safe pairing).
- * Version: 0.4.0
+ * Version: 0.4.1
  * Requires at least: 6.0
  * Requires PHP: 8.1
  * Author: TS3 Community Operations Suite
@@ -19,11 +19,26 @@ declare(strict_types=1);
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'TS3PILOT_VERSION', '0.4.0' );
+define( 'TS3PILOT_VERSION', '0.4.1' );
 define( 'TS3PILOT_PLUGIN_FILE', __FILE__ );
 define( 'TS3PILOT_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'TS3PILOT_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
-require_once TS3PILOT_PLUGIN_DIR . 'src/Plugin.php';
+spl_autoload_register(
+	static function ( string $class_name ): void {
+		$prefix = 'Ts3Pilot\\';
+		if ( ! str_starts_with( $class_name, $prefix ) ) {
+			return;
+		}
+		$relative = substr( $class_name, strlen( $prefix ) );
+		if ( ! preg_match( '/^[A-Za-z0-9_\\\\]+$/', $relative ) ) {
+			return;
+		}
+		$path = TS3PILOT_PLUGIN_DIR . 'src/' . str_replace( '\\', '/', $relative ) . '.php';
+		if ( is_file( $path ) ) {
+			require_once $path;
+		}
+	}
+);
 
 Ts3Pilot\Plugin::instance()->register();

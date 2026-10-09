@@ -53,8 +53,8 @@ export async function runDoctorCommand(ctx: CliContext): Promise<void> {
         const response = await fetch(`http://${ctx.config.agent.host}:${ctx.config.agent.port}/v1/health`, {
           signal: AbortSignal.timeout(2000),
         });
-        const body = (await response.json()) as { status?: string };
-        return response.ok && body.status === 'ok' ? 'ok' : 'unreachable';
+        const body = (await response.json()) as { ok?: boolean; data?: { status?: string; service?: string } };
+        return response.ok && body.ok === true && body.data?.status === 'ok' && body.data.service === 'ts3-agent' ? 'ok' : 'unreachable';
       } catch {
         return 'unreachable';
       }

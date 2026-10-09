@@ -27,3 +27,11 @@ test('parseKeyValueLine parses escaped key/value pairs', () => {
 test('splitEntries splits on pipe', () => {
   assert.deepEqual(splitEntries('a=1|b=2'), ['a=1', 'b=2']);
 });
+
+test('control characters cannot inject additional ServerQuery commands', () => {
+  const value = 'hello\nserverstop\r\t\v\f\x07\x08';
+  const escaped = escapeQueryValue(value);
+  for (const control of ['\n', '\r', '\t', '\v', '\f', '\x07', '\x08']) assert.equal(escaped.includes(control), false);
+  assert.equal(unescapeQueryValue(escaped), value);
+  assert.equal(parseKeyValueLine(`channel_name=${escapeQueryValue('literal\\s\\n')}`).channel_name, 'literal\\s\\n');
+});

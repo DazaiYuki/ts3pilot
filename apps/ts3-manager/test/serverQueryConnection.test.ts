@@ -146,3 +146,25 @@ test('ServerQuery notifications are delivered to the handler', async () => {
     server.close();
   }
 });
+
+test('real two-line banner is consumed and simultaneous callers share one handshake', async () => {
+  let logins = 0;
+  const { server, port } = await startFakeTs3(socket => {
+    socket.write('TS3\n\rWelcome to the TeamSpeak 3 ServerQuery interface, type "help" for a list of commands.\n\r');
+    socket.on('data', (chunk: Buffer) => {
+      for (const command of chunk.toString().split('\n').map(line => line.trim()).filter(Boolean)) {
+        if (command.startsWith('login')) { logins++; respond(socket, ['error id=0 msg=ok']); }
+        else if (command.startsWith('use')) respond(socket, ['error id=0 msg=ok']);
+        else if (command === 'serverinfo') respond(socket, ['virtualserver_name=Live\\sTest', 'error id=0 msg=ok']);
+        else if (command === 'channellist') respond(socket, ['cid=1 channel_name=Lobby', 'error id=0 msg=ok']);
+      }
+    });
+  });
+  const connection = new ServerQueryConnection({ host: '127.0.0.1', port, username: 'admin', password: 'secret', timeoutMs: 1000 });
+  try {
+    const [status, channels] = await Promise.all([connection.command('serverinfo'), connection.command('channellist')]);
+    assert.equal(status.entries[0]?.virtualserver_name, 'Live Test');
+    assert.equal(channels.entries[0]?.channel_name, 'Lobby');
+    assert.equal(logins, 1);
+  } finally { await connection.close(); server.close(); }
+});

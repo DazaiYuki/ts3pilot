@@ -226,14 +226,14 @@ function register_setting( string $group, string $option, array $args = array() 
 function settings_fields( string $group ): void {
 }
 
-function submit_button( string $text = '', string $type = 'primary', string $name = 'submit', bool $wrap = true, array $other_attributes = null ): void {
+function submit_button( string $text = '', string $type = 'primary', string $name = 'submit', bool $wrap = true, ?array $other_attributes = null ): void {
 }
 
-function add_menu_page( string $page_title, string $menu_title, string $capability, string $menu_slug, callable $callback = null, string $icon_url = '', int $position = null ): string {
+function add_menu_page( string $page_title, string $menu_title, string $capability, string $menu_slug, ?callable $callback = null, string $icon_url = '', ?int $position = null ): string {
 	return '';
 }
 
-function add_submenu_page( string $parent_slug, string $page_title, string $menu_title, string $capability, string $menu_slug, callable $callback = null ): string|false {
+function add_submenu_page( string $parent_slug, string $page_title, string $menu_title, string $capability, string $menu_slug, ?callable $callback = null ): string|false {
 	return '';
 }
 

@@ -2,6 +2,7 @@ import {
   chmodSync,
   closeSync,
   copyFileSync,
+  createReadStream,
   createWriteStream,
   existsSync,
   mkdtempSync,
@@ -12,12 +13,13 @@ import {
   renameSync,
   rmSync,
   statSync,
-  unlinkSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
-import { Readable } from 'node:stream';
+import { basename, dirname, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
+import { createHash } from 'node:crypto';
+import { readTarGz } from '../../system/backupEngine.ts';
+import { downloadFile } from '../../services/download.ts';
 import { AppError, ErrorCode } from '../../domain/errors.ts';
 import { runProcess } from '../../system/processRunner.ts';
 import { CLI_VERSION } from '../../version.ts';
@@ -40,6 +42,7 @@ const NC = '\x1b[0m';
 interface LatestRelease {
   tag: string;
   assetUrl: string;
+  sha256?: string;
 }
 
 export async function runUpdateCommand(
@@ -48,6 +51,7 @@ export async function runUpdateCommand(
   flags: Record<string, string | boolean>,
 ): Promise<void> {
   const action = positionals[0] ?? 'self';
+  if (action !== 'self' && action !== 'check') throw new AppError(ErrorCode.USER, 'usage: update [check|self]');
   const explicitNoMirror = flagBool(flags, 'no-mirror');
   const prefixes = explicitNoMirror || process.env.TS3PILOT_GH_MIRROR === '0'
     ? []
@@ -88,33 +92,8 @@ async function runUpdate(mirrorPrefixes: readonly string[], action: string): Pro
   try {
     const archivePath = join(workDir, 'ts3pilot-update.tar.gz');
     await downloadWithMirror(release.assetUrl, archivePath, mirrorPrefixes);
-    if (!isGzipArchive(archivePath)) {
-      throw new AppError(ErrorCode.VALIDATION, '下载的更新包不是有效的 gzip 归档（magic bytes 校验失败）');
-    }
-
-    const extractDir = join(workDir, 'extract');
-    const tarResult = await runProcess('tar', ['-xzf', archivePath, '-C', extractDir], { timeoutMs: 120000 });
-    if (tarResult.exitCode !== 0) {
-      throw new AppError(ErrorCode.SYSTEM, `解压失败: ${tarResult.stderr.trim() || `exit ${tarResult.exitCode}`}`);
-    }
-
-    const newBinary = findBinaryInDir(extractDir);
-    if (newBinary === undefined) {
-      throw new AppError(ErrorCode.VALIDATION, '发布包中未找到 ts3pilot 二进制');
-    }
-
-    // Atomically replace the running binary: keep the old file until the new
-    // one has passed a smoke test, and roll back automatically on failure.
-    await swapBinarySafely({
-      target,
-      newBinary,
-      verify: async (binary) => {
-        const probe = await runProcess(binary, ['version'], { timeoutMs: 15000 });
-        if (probe.exitCode !== 0) {
-          throw new AppError(ErrorCode.SYSTEM, `新二进制冒烟测试失败: ${probe.stderr.trim() || `exit ${probe.exitCode}`}`);
-        }
-      },
-    });
+    if (!release.sha256) throw new AppError(ErrorCode.VALIDATION, 'Release metadata has no SHA-256 digest; refusing an unverified update');
+    await installUpdateArchive(archivePath, target, release.sha256, latest);
 
     printLine('');
     printLine(`${GREEN}✔ 更新完成！新版本 ${latest} 已就绪，重启 ts3pilot 后生效。${NC}`);
@@ -122,6 +101,38 @@ async function runUpdate(mirrorPrefixes: readonly string[], action: string): Pro
   } finally {
     rmSync(workDir, { recursive: true, force: true });
   }
+}
+
+export async function installUpdateArchive(archive: string, target: string, expectedSha256: string, version: string): Promise<void> {
+  if (!/^[a-f0-9]{64}$/i.test(expectedSha256)) throw new AppError(ErrorCode.VALIDATION, 'Invalid release SHA-256');
+  const hash = createHash('sha256');
+  for await (const chunk of createReadStream(archive)) hash.update(chunk as Buffer);
+  if (hash.digest('hex') !== expectedSha256.toLowerCase()) throw new AppError(ErrorCode.VALIDATION, 'Release checksum mismatch');
+  const work = mkdtempSync(join(tmpdir(), 'ts3pilot-extract-'));
+  try {
+    let binary: string | undefined;
+    let total = 0;
+    const names = new Set<string>();
+    await readTarGz(archive, async (entry, content) => {
+      total += entry.size;
+      if (total > MAX_ARCHIVE_BYTES || names.has(entry.name)) throw new AppError(ErrorCode.VALIDATION, 'Invalid release archive size or duplicate entry');
+      names.add(entry.name);
+      if (basename(entry.name) === 'ts3pilot') {
+        if (binary) throw new AppError(ErrorCode.VALIDATION, 'Multiple binaries in release archive');
+        binary = join(work, 'ts3pilot');
+        await pipeline(content, createWriteStream(binary, { mode: 0o700 }));
+      } else {
+        for await (const chunk of content) void chunk;
+      }
+    });
+    if (!binary) throw new AppError(ErrorCode.VALIDATION, 'Release archive contains no ts3pilot binary');
+    await swapBinarySafely({ target, newBinary: binary, verify: async path => {
+      const probe = await runProcess(path, ['version'], { timeoutMs: 15000 });
+      if (probe.exitCode !== 0 || probe.stdout.split(/\r?\n/)[0] !== `ts3pilot ${version}`) {
+        throw new AppError(ErrorCode.VALIDATION, 'Downloaded binary failed version verification');
+      }
+    } });
+  } finally { rmSync(work, { recursive: true, force: true }); }
 }
 
 export function stripVersionTag(tag: string): string {
@@ -207,44 +218,27 @@ export interface BinarySwapOptions {
 }
 
 /**
- * Replace `target` with `newBinary` and keep the previous binary until the new
- * one passes `verify`. On verification failure the old binary is restored, so
- * a broken download can never leave the CLI unusable.
+ * Verify a staged candidate without touching the installed binary, then replace
+ * it with an atomic same-filesystem rename. A failed preflight keeps the old file.
  */
 export async function swapBinarySafely(options: BinarySwapOptions): Promise<void> {
   const { target, newBinary, verify } = options;
   if (!existsSync(newBinary)) {
     throw new AppError(ErrorCode.VALIDATION, `新二进制不存在: ${newBinary}`);
   }
-  const backup = `${target}.bak-${process.pid}-${Date.now()}`;
-  const hadOld = existsSync(target);
-  if (hadOld) {
-    copyFileSync(target, backup);
-    // Remove first to avoid the Linux "Text file busy" error.
-    unlinkSync(target);
-  }
+  // Stage beside the destination so the final rename is atomic even when /tmp
+  // is a separate filesystem. Verify before replacing the running executable.
+  const staging = mkdtempSync(join(dirname(target), '.ts3pilot-update-'));
+  const candidate = join(staging, 'ts3pilot');
   try {
-    renameSync(newBinary, target);
-    chmodSync(target, 0o755);
-    await verify(target);
-  } catch (error) {
-    if (hadOld && existsSync(backup)) {
-      try {
-        rmSync(target, { force: true });
-        renameSync(backup, target);
-        chmodSync(target, 0o755);
-      } catch (restoreError) {
-        throw new AppError(
-          ErrorCode.SYSTEM,
-          `更新失败且回滚也失败: ${error instanceof Error ? error.message : String(error)}; 回滚错误: ${
-            restoreError instanceof Error ? restoreError.message : String(restoreError)
-          }（旧二进制保留在 ${backup}）`,
-        );
-      }
-    }
-    throw error;
+    copyFileSync(newBinary, candidate);
+    chmodSync(candidate, 0o755);
+    await verify(candidate);
+    // POSIX rename replaces a running binary without unlinking it first.
+    renameSync(candidate, target);
+  } finally {
+    rmSync(staging, { recursive: true, force: true });
   }
-  rmSync(backup, { force: true });
 }
 
 function isPkgBinary(): boolean {
@@ -252,7 +246,10 @@ function isPkgBinary(): boolean {
 }
 
 async function fetchLatestRelease(): Promise<LatestRelease> {
-  const response = await fetch(GITHUB_API, {
+  const pinned = process.env.TS3PILOT_VERSION;
+  if (pinned && !/^\d+\.\d+\.\d+$/.test(pinned)) throw new AppError(ErrorCode.VALIDATION, 'Invalid TS3PILOT_VERSION');
+  const metadataUrl = pinned ? `https://api.github.com/repos/${REPO}/releases/tags/v${pinned}` : GITHUB_API;
+  const response = await fetch(metadataUrl, {
     headers: { 'user-agent': `ts3pilot/${CLI_VERSION}` },
     signal: AbortSignal.timeout(15000),
   });
@@ -261,15 +258,15 @@ async function fetchLatestRelease(): Promise<LatestRelease> {
   }
   const payload = (await response.json()) as {
     tag_name?: string;
-    assets?: Array<{ browser_download_url?: string }>;
+    assets?: Array<{ browser_download_url?: string; digest?: string }>;
   };
   const tag = payload.tag_name ?? '';
-  const assetUrl =
-    (payload.assets ?? []).map((asset) => asset.browser_download_url ?? '').find((url) => /ts3pilot-linux-x64-v.*\.tar\.gz$/.test(url)) ?? '';
+  const asset = (payload.assets ?? []).find((entry) => /ts3pilot-linux-x64-v.*\.tar\.gz$/.test(entry.browser_download_url ?? ''));
+  const assetUrl = asset?.browser_download_url ?? '';
   if (tag.length === 0 || assetUrl.length === 0) {
     throw new AppError(ErrorCode.NETWORK, 'Release 元数据不完整（缺少 tag 或 ts3pilot-linux-x64 发布包）');
   }
-  return { tag, assetUrl };
+  return { tag, assetUrl, sha256: asset?.digest?.match(/^sha256:([a-f0-9]{64})$/i)?.[1] };
 }
 
 async function downloadWithMirror(assetUrl: string, dest: string, mirrorPrefixes: readonly string[]): Promise<void> {
@@ -278,7 +275,7 @@ async function downloadWithMirror(assetUrl: string, dest: string, mirrorPrefixes
   for (let index = 0; index < attempts.length; index += 1) {
     const url = attempts[index] as string;
     try {
-      await downloadFile(url, dest);
+      await downloadFile(url, dest, MAX_ARCHIVE_BYTES);
       if (index > 0) printLine(`已通过镜像/直连完成下载 (${index + 1}/${attempts.length})`);
       return;
     } catch (error) {
@@ -289,17 +286,4 @@ async function downloadWithMirror(assetUrl: string, dest: string, mirrorPrefixes
     }
   }
   throw lastError instanceof Error ? lastError : new Error('所有下载源均失败');
-}
-
-async function downloadFile(url: string, destPath: string): Promise<void> {
-  const response = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(300000) });
-  if (!response.ok || response.body === null) {
-    throw new AppError(ErrorCode.NETWORK, `下载失败: HTTP ${response.status}`);
-  }
-  const contentLength = Number(response.headers.get('content-length') ?? 0);
-  if (contentLength > MAX_ARCHIVE_BYTES) {
-    throw new AppError(ErrorCode.VALIDATION, `更新包过大 (${contentLength} bytes)`);
-  }
-  const body = response.body as unknown as import('node:stream/web').ReadableStream;
-  await pipeline(Readable.fromWeb(body), createWriteStream(destPath));
 }

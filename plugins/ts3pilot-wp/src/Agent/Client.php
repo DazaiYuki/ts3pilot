@@ -194,7 +194,9 @@ final class Client {
 	 */
 	private function do_request( string $method, string $path, array $body, string $secret, int $timeout ): array {
 		$endpoint = rtrim( (string) ( $this->node()['endpoint'] ?? '' ), '/' );
-		$json     = wp_json_encode( $body );
+		// WordPress turns GET bodies into query parameters; sign the empty wire
+		// body instead of passing JSON to its GET transport.
+		$json = in_array( strtoupper( $method ), array( 'GET', 'HEAD' ), true ) ? '' : wp_json_encode( $body );
 		if ( false === $json ) {
 			throw new AgentException( 'INVALID_BODY', 'Request body could not be encoded.' );
 		}

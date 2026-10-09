@@ -115,7 +115,7 @@ test('production install orchestrates download, tar, EULA marker, firewall and s
     assert.equal(existsSync(join(installPath, EULA_MARKER)), true);
     assert.equal(result.firewall.tool, 'ufw');
     assert.ok(result.firewall.opened.includes('9987/udp'));
-    assert.ok(result.firewall.opened.includes('10443/tcp'));
+    assert.deepEqual(result.firewall.opened, ['9987/udp', '30033/tcp']);
     for (const port of TS3_FIREWALL_PORTS) {
       assert.ok(calls.some((call) => call.bin === 'ufw' && call.args[0] === 'allow' && call.args[1] === `${port.port}/${port.proto}`));
     }
@@ -133,7 +133,7 @@ test('firewalld is used when ufw is unavailable', async () => {
     const deps = makeDeps({}, calls);
     deps.runProcess = async (bin, args) => {
       calls.push({ bin, args: [...args] });
-      if (bin === 'ufw') return { exitCode: 1, stdout: '', stderr: 'not found', timedOut: false, overflow: false };
+      if (bin === 'ufw') throw Object.assign(new Error('ufw not found'), { code: 'ENOENT' });
       if (bin === 'firewall-cmd' && args[0] === '--state') return { exitCode: 0, stdout: 'running', stderr: '', timedOut: false, overflow: false };
       return { exitCode: 0, stdout: '', stderr: '', timedOut: false, overflow: false };
     };

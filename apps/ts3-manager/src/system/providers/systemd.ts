@@ -55,16 +55,17 @@ export class SystemdServiceManager implements ServiceManager {
 
   async status(): Promise<ServiceStatus> {
     this.guard();
-    const result = await runProcess('systemctl', ['--no-pager', '--lines=0', 'status', this.unitName()], { timeoutMs: 15000 });
-    const active = result.stdout.match(/Active:\s*([a-z()]+)/i)?.[1] ?? '';
-    const pid = Number(result.stdout.match(/Main PID:\s*(\d+)/i)?.[1] ?? 0);
-    const state: ServiceStatus['state'] = active.includes('running')
+    const result = await runProcess('systemctl', ['show', '--no-pager', '--property=ActiveState,SubState,MainPID', this.unitName()], { timeoutMs: 15000 });
+    const active = result.stdout.match(/^ActiveState=(.*)$/m)?.[1]?.trim() ?? '';
+    const sub = result.stdout.match(/^SubState=(.*)$/m)?.[1]?.trim() ?? '';
+    const pid = Number(result.stdout.match(/^MainPID=(\d+)$/m)?.[1] ?? 0);
+    const state: ServiceStatus['state'] = active === 'active' && sub === 'running'
       ? 'running'
-      : active.includes('dead')
+      : active === 'inactive' || active === 'failed'
         ? 'stopped'
-        : active.includes('activating')
+        : active === 'activating'
           ? 'starting'
-          : active.includes('deactivating')
+          : active === 'deactivating'
             ? 'stopping'
             : 'unknown';
     return {

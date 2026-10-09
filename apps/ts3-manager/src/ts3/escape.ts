@@ -2,6 +2,13 @@ export function escapeQueryValue(value: string): string {
   return value
     .replace(/\\/g, '\\\\')
     .replace(/\//g, '\\/')
+    .replaceAll('\x07', '\\a')
+    .replaceAll('\x08', '\\b')
+    .replace(/\f/g, '\\f')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t')
+    .replace(/\v/g, '\\v')
     .replace(/ /g, '\\s')
     .replace(/\|/g, '\\p');
 }
@@ -19,6 +26,13 @@ export function unescapeQueryValue(value: string): string {
     else if (next === 'p') out += '|';
     else if (next === '/') out += '/';
     else if (next === '\\') out += '\\';
+    else if (next === 'a') out += '\x07';
+    else if (next === 'b') out += '\x08';
+    else if (next === 'f') out += '\f';
+    else if (next === 'n') out += '\n';
+    else if (next === 'r') out += '\r';
+    else if (next === 't') out += '\t';
+    else if (next === 'v') out += '\v';
     else {
       out += ch;
       out += next;

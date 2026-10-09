@@ -115,3 +115,10 @@ npm publish dist/release/ts3-manager-npm-v0.3.0.tgz
   工作区依赖。
 - 发布后 npmmirror 数分钟内同步；版本号以 `apps/ts3-manager/package.json`
   与 `scripts/latest.json` 为准，升级版本时两者要同步更新。
+
+## 生产发布验收
+
+- `npm run release && npm run verify:release`：构建并验证真正的 CLI/npm/WordPress 档案、摘要、原子自更新，以及隔离 Ubuntu 中的安装器行为。Linux 需要 `zip`、`unzip`、`tar` 和 Docker。
+- `npm run test:compat`：在仍受支持的主要 Linux x86_64 用户空间以非特权用户运行二进制、Agent、doctor 健康检查和退出；生成摘要化报告。
+- `npm run test:integration -- --accept-eula`：显式接受 TS3 官方许可后，验证既有 TS3、Ubuntu 原生新建、真实 WordPress 配对和控制、接管只读性。需要访问官方 TS3 下载域名，测试服务不会暴露公网 Agent 端口；仅清理本次创建的容器和卷。
+- GitHub Actions 的 `workflow_dispatch` 输入 `accept_ts3_license=true` 只授权当前隔离联调。默认 push/PR 校验不自动接受许可。发布任务复用同次验证产物，不另行构建未经测试的二进制。

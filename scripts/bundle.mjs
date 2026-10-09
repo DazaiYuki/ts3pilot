@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, rmSync } from 'node:fs';
+import { chmodSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
 const root = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
@@ -23,7 +23,7 @@ if (pkgJs.length === 0) {
 // build host itself is much newer. pkg-fetch does not ship every combination,
 // so we probe the common static targets and fail loudly if none is available —
 // a dynamic build would silently break on glibc 2.28 systems.
-const candidates = ['node18-linuxstatic-x64', 'node20-linuxstatic-x64', 'node22-linuxstatic-x64'];
+const candidates = ['node24-linuxstatic-x64', 'node22-linuxstatic-x64'];
 
 execFileSync(npm, ['run', 'build'], { cwd: pkgDir, stdio: 'inherit', shell: process.platform === 'win32' });
 
@@ -39,6 +39,7 @@ for (const target of candidates) {
       stdio: 'inherit',
     });
     if (!existsSync(out)) throw new Error(`pkg did not produce ${out}`);
+    chmodSync(out, 0o755);
     console.log(`bundle: built with ${target}`);
     process.exit(0);
   } catch (error) {
