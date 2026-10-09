@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # TS3Pilot standalone Linux x86_64 installer. Does not install system packages.
 # Pin with TS3PILOT_VERSION=x.y.z; optional trusted digest: TS3PILOT_SHA256.
+# Offline: TS3PILOT_ARCHIVE=<local tar.gz> requires both version and digest.
 set -euo pipefail
 
 REPO="DazaiYuki/ts3pilot"
@@ -18,6 +19,10 @@ for command in curl tar sha256sum mktemp chmod mkdir mv ln; do
 done
 
 version="${TS3PILOT_VERSION:-}"
+local_archive="${TS3PILOT_ARCHIVE:-}"
+if [ -n "$local_archive" ] && [ -z "$version" ]; then
+ die "Offline installation requires TS3PILOT_VERSION"
+fi
 if [ -z "$version" ]; then
  if [ "$MIRROR" = jsdelivr ]; then
   metadata="$(curl -fsSL --max-time 30 "https://cdn.jsdelivr.net/gh/${REPO}@main/scripts/latest.json")"
@@ -30,6 +35,9 @@ fi
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "Invalid release version"
 asset="https://github.com/${REPO}/releases/download/v${version}/ts3pilot-linux-x64-v${version}.tar.gz"
 expected="${TS3PILOT_SHA256:-}"
+if [ -n "$local_archive" ] && [ -z "$expected" ]; then
+ die "Offline installation requires a trusted TS3PILOT_SHA256"
+fi
 if [ -z "$expected" ]; then
  # Obtain the digest from the official release, never from an untrusted mirror.
  checksum="$(curl -fsSL --max-time 30 "${asset}.sha256")" || die "Cannot obtain official SHA-256; supply a trusted TS3PILOT_SHA256"
@@ -46,6 +54,12 @@ if [ "$MIRROR" = jsdelivr ]; then
  sources=("https://gh-proxy.com/${asset}" "https://mirror.ghproxy.com/${asset}" "$asset")
 fi
 downloaded=false
+if [ -n "$local_archive" ]; then
+ [ -f "$local_archive" ] || die "Local archive does not exist: $local_archive"
+ cp -- "$local_archive" "$tmp/release.tar.gz"
+ (cd "$tmp" && printf '%s  release.tar.gz\n' "$expected" | sha256sum -c -) || die "Local archive checksum failed; installed version preserved"
+ downloaded=true
+else
 for url in "${sources[@]}"; do
  log "Downloading v${version}: $url"
  if curl -fsSL --max-time 600 "$url" -o "$tmp/release.tar.gz" &&
@@ -54,6 +68,7 @@ for url in "${sources[@]}"; do
  fi
  log "Download or checksum failed; trying next source"
 done
+fi
 [ "$downloaded" = true ] || die "No source supplied a verified release archive"
 # Only the four release files and their optional directory wrapper are allowed.
 tar -tzf "$tmp/release.tar.gz" > "$tmp/entries"
