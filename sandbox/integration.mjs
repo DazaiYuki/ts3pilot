@@ -87,7 +87,9 @@ try {
   const digest = createHash('sha256').update(readFileSync(tsArchive)).digest('hex');
   const nativeName = `${network}-native`;
   const native = join(work, 'native'); mkdirSync(native);
-  launch(nativeName, ['--network', network, '-v', `${binary}:/ts3pilot:ro`, '-v', `${native}:/native`, 'ubuntu:24.04', '/bin/sh', '-ec', 'apt-get update >/native/apt.log 2>&1 && DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl bzip2 libstdc++6 >/native/packages.log 2>&1 && touch /native/prerequisites.ok && exec sleep infinity']);
+  // The official start script daemonizes. Init must reap orphaned children so
+  // its stop command does not wait forever on a zombie in this test container.
+  launch(nativeName, ['--init', '--network', network, '-v', `${binary}:/ts3pilot:ro`, '-v', `${native}:/native`, 'ubuntu:24.04', '/bin/sh', '-ec', 'apt-get update >/native/apt.log 2>&1 && DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl bzip2 libstdc++6 >/native/packages.log 2>&1 && touch /native/prerequisites.ok && exec sleep infinity']);
   await wait(() => { try { docker('exec', nativeName, 'test', '-f', '/native/prerequisites.ok'); return true; } catch { return false; } }, 'native Ubuntu prerequisites');
   docker('exec', nativeName, '/ts3pilot', 'config', 'init', '--config', '/native/config.json');
   docker('exec', nativeName, '/ts3pilot', 'config', 'set', 'mode', 'production', '--config', '/native/config.json');
