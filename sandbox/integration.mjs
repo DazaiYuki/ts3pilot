@@ -1,6 +1,6 @@
 // Opt-in real TS3/WordPress verification. Test credentials never reach stdout.
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
@@ -19,6 +19,11 @@ const archive = join(root, 'dist/release', `ts3pilot-wp-v${version}.zip`);
 mkdirSync(work, { recursive: true, mode: 0o700 });
 const containers = [];
 const docker = (...args) => execFileSync('docker', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 300000 });
+const dockerLogs = name => {
+  const result = spawnSync('docker', ['logs', name], { encoding: 'utf8', timeout: 30000 });
+  if (result.status !== 0) throw new Error('Unable to read isolated server logs');
+  return result.stdout + result.stderr;
+};
 const pause = () => new Promise(resolvePromise => setTimeout(resolvePromise, 1000));
 const wait = async (check, label) => {
   for (let i = 0; i < 90; i++) { if (await check()) return; await pause(); }
@@ -47,7 +52,7 @@ try {
   wp('core', 'install', '--url=http://localhost', '--title=TS3Pilot-integration', '--admin_user=integration-admin', `--admin_password=${randomBytes(24).toString('hex')}`, '--admin_email=test@example.invalid', '--skip-email');
   wp('plugin', 'install', `/artifacts/${archive.split('/').pop()}`, '--activate');
   console.log(`PASS released WordPress ZIP activation (WordPress ${wp('core', 'version').trim()})`);
-  await wait(() => docker('logs', ts3Name).includes('listening for query'), 'official TS3 Query');
+  await wait(() => dockerLogs(ts3Name).includes('listening for query'), 'official TS3 Query');
 
   const exerciseAgent = async (serverName, password, port, installPath = '') => {
     const cfg = defaultConfig();
@@ -71,7 +76,7 @@ try {
   const wpIP = docker('inspect', wpName, '--format', '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}').trim();
   assert.match(wpIP, /^[0-9.]+$/);
   docker('exec', ts3Name, 'sh', '-c', 'printf "%s/32\\n" "$1" >> /var/ts3server/query_ip_allowlist.txt', 'sh', wpIP);
-  await exerciseAgent(ts3Name, getQueryPassword(docker('logs', ts3Name)), 17880);
+  await exerciseAgent(ts3Name, getQueryPassword(dockerLogs(ts3Name)), 17880);
   console.log('PASS existing official TS3 instance managed through WordPress');
 
   // Download through the official HTTPS origin, with normal certificate trust.
@@ -113,7 +118,8 @@ try {
   console.log('integration: ALL GREEN');
 } catch (error) {
   // Do not print child-process arguments/output: they can contain test secrets.
-  console.error(`integration failed: ${error.code ?? error.name ?? 'error'}; test state: ${work}`);
+  const reason = error.status === undefined && !error.cmd ? error.message : error.code ?? error.name;
+  console.error(`integration failed: ${reason}; test state: ${work}`);
   process.exitCode = 1;
 } finally {
   for (const name of containers.reverse()) { try { docker('rm', '-f', name); } catch { /* only our test resources */ } }
