@@ -88,7 +88,7 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Node tests
-        run: npm run test --workspace @ts3pilot/ts3-manager
+        run: node scripts/ci-test.mjs run test --workspace @ts3pilot/ts3-manager
       - name: PHP tests
         run: composer test --working-dir=plugins/ts3pilot-wp
       - name: Build
@@ -115,7 +115,7 @@ jobs:
       - name: Build release artifacts
         run: npm run release
       - name: Verify packaged artifacts and shell installer
-        run: npm run verify:release
+        run: node scripts/ci-test.mjs run verify:release
       - name: Validate artifacts
         run: |
           test -f dist/release/ts3pilot-linux-x64-v*.tar.gz
