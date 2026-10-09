@@ -10,6 +10,8 @@ CLI 可在 glibc 和 musl 用户空间运行。**TeamSpeak Server 是独立第�
 
 ## 安装 CLI
 
+大陆或受限网络请先看[镜像、可信摘要与离线安装指南](mainland-install.md)。独立 CLI 无需安装 Node；npm 包版本与 GitHub Release 不一定同步。
+
 发布 v0.4.1 后：
 
 ```bash

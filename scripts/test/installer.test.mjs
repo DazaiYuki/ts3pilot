@@ -13,6 +13,7 @@ test('the shell installer preserves config, replaces a running binary and reject
   try {
     writeFileSync(join(fixtures, 'curl'), `#!/bin/sh
 url=''; out=''
+[ ! -e /deny-network ] || exit 99
 while [ "$#" -gt 0 ]; do
  case "$1" in -o) out="$2"; shift 2 ;; https:*) url="$1"; shift ;; *) shift ;; esac
 done
@@ -37,6 +38,14 @@ sleep 1
 bash /install.sh
 kill -0 "$pid"
 [ "$(cat /opt/ts3pilot/user-data/config)" = preserved ]
+trusted_digest=$(cut -d ' ' -f 1 /artifacts/ts3pilot-linux-x64-v${version}.tar.gz.sha256)
+: > /deny-network
+TS3PILOT_ARCHIVE=/artifacts/ts3pilot-linux-x64-v${version}.tar.gz TS3PILOT_SHA256="$trusted_digest" bash /install.sh
+kill -0 "$pid"
+if TS3PILOT_ARCHIVE=/artifacts/ts3pilot-linux-x64-v${version}.tar.gz TS3PILOT_SHA256=$(printf '%064d' 0) bash /install.sh; then exit 1; fi
+if TS3PILOT_ARCHIVE=/artifacts/ts3pilot-linux-x64-v${version}.tar.gz TS3PILOT_SHA256='' bash /install.sh; then exit 1; fi
+if TS3PILOT_ARCHIVE=/artifacts/ts3pilot-linux-x64-v${version}.tar.gz TS3PILOT_VERSION='' TS3PILOT_SHA256="$trusted_digest" bash /install.sh; then exit 1; fi
+rm /deny-network
 sha256sum /opt/ts3pilot/ts3pilot > /tmp/before
 : > /bad-download
 if bash /install.sh; then exit 1; fi

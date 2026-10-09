@@ -1,133 +1,93 @@
-# TS3Pilot — TS3 社区运营套件
+# TS3Pilot — TeamSpeak 3 管理工具
 
-[English](README.md) | [中文](README.zh-CN.md)
+[English](README.md) | **中文**
 
-一套本地优先（local-first）的 TeamSpeak 3 服务器运维工具链：`ts3pilot`
-CLI/Agent 独立可用，WordPress 插件是可选的 Web 控制平面，两者通过受控的
-`/v1` Agent API 解耦协作。无论你是**从零搭建新服**，还是**接管已有 TS3
-服务器**，都可以从这里开始。
+在 Linux 服务器上新建或接管 TeamSpeak 3，通过独立 CLI/Agent 管理服务、频道、客户端和备份；可选 WordPress 插件提供后台控制面板、前台状态卡和身份核验入口。
 
-> 本项目不重新分发 TeamSpeak Server 二进制。用户必须自行从 TeamSpeak
-> 官方渠道获取并遵守其许可条款；项目代码本身采用 Apache-2.0，与 TeamSpeak
-> 软件许可严格分离。
+## 先选安装方式
 
-## 架构一览（CLI + Agent + WP）
+| 你要做什么 | 使用什么 | 是否需要安装 Node.js |
+| --- | --- | --- |
+| Ubuntu 等 Linux x86_64 生产部署 | Release 的独立 CLI 二进制 | **不需要**，包内自带运行时 |
+| WordPress 控制面板 | Release 的 `ts3pilot-wp-v0.4.1.zip` | 不需要 Node/npm/Composer，使用 WordPress 和 PHP |
+| 修改 TypeScript 源码、运行开发测试 | Git 仓库 + npm | Node 24，或 Node 22.6+ 配合类型擦除选项 |
+| 使用 npm 安装 CLI | `@ts3pilot/ts3-manager` | 安装时需要 npm；包内仍是 Linux x86_64 独立二进制 |
 
-```
-┌──────────────────┐      ┌────────────────────────┐      ┌─────────────────┐
-│  浏览器 / 前台     │      │  ts3pilot Agent         │      │   TeamSpeak 3   │
-│  (状态卡/短代码)   │      │  (Host Control Plane)  │      │   (Service)     │
-└────────┬─────────┘      └───────────┬────────────┘      └────────┬────────┘
-         │ HTTP(S)                    │ HMAC-SHA256 /v1            │ TS3 协议
-         ▼                            ▼                            ▼
-┌──────────────────┐      ┌────────────────────────┐      ┌─────────────────┐
-│  WordPress 插件   │ ───▶ │  ts3pilot CLI           │ ───▶ │  Voice/Query/   │
-│  (可选 Web CP)    │      │  (本地管理工具)          │      │  FileTransfer   │
-└──────────────────┘      └────────────────────────┘      └─────────────────┘
-```
+**当前稳定版本：[v0.4.1](https://github.com/DazaiYuki/ts3pilot/releases/tag/v0.4.1)。** 2026-10-09 查询时 npm 官方包仍是 **0.4.0**，不要把 `npm install -g` 当作安装 0.4.1 的方式。Release 中的 npm `.tgz` 是分发文件，不代表同版本已发布到 npm registry；第三方镜像也可能延迟同步。
 
-- **CLI/Agent（必须）**：`apps/ts3-manager`，TypeScript，零运行时依赖。
-- **WordPress 插件（可选）**：`plugins/ts3pilot-wp`，通过 HMAC 安全配对。
-- 两者都只面向固定动作枚举，**不存在任意命令执行接口**。
+## 安装 CLI
 
-## 5 分钟极速上手
-
-### 场景 A：新服主从零安装
-
-1. 安装 CLI（Linux 一行命令）：
-
-   ```bash
-   curl -sSL https://raw.githubusercontent.com/DazaiYuki/ts3pilot/main/scripts/install.sh | sudo bash
-   ```
-
-   发布包为**独立单文件二进制，服务器无需安装 Node.js**。
-
-   无法直连 GitHub？使用 jsDelivr 加速版：
-
-   ```bash
-   curl -sSL https://cdn.jsdelivr.net/gh/DazaiYuki/ts3pilot@main/scripts/install-cn.sh | sudo bash
-   ```
-
-2. 一键安装 TS3 Server（自动下载官方包、解压、EULA 标记、可选防火墙）：
-
-   ```bash
-   # 先按 docs/deployment.md 创建专用非 root 账户和配置，再切换 production 模式。
-   # 默认 development 模式执行的是 mock 安装，不会安装真实 TS3。
-   sudo ts3pilot install --accept-eula --install-path /srv/ts3 \
-     --expected-sha256 '<官方包的可信SHA-256>' --config /var/lib/ts3pilot/config.json
-   ```
-
-3. `ts3pilot doctor` 检查环境，然后 `ts3pilot api enable` 复制**配对码**。
-4. `ts3pilot agent` 启动 Agent（生产建议 systemd 托管）。
-5. 从 **GitHub Releases** 下载 `ts3pilot-wp-v*.zip`，上传 WordPress 激活并配对。
-
-### 场景 B：已有 TS3 服务器接管
+适用于 Linux **x86_64（64 位 x86）**。生产服务器无需安装 Node、npm 或 PHP；PHP 仅用于 WordPress 面板。
 
 ```bash
-ts3pilot config set mode production
-ts3pilot config set ts3.installPath /srv/ts3
-ts3pilot adopt          # 只读分析，绝不改文件
-ts3pilot doctor
-ts3pilot api enable && ts3pilot agent
+curl -fsSL https://raw.githubusercontent.com/DazaiYuki/ts3pilot/v0.4.1/scripts/install.sh -o install-ts3pilot.sh
+sudo env TS3PILOT_VERSION=0.4.1 bash install-ts3pilot.sh
+ts3pilot version
 ```
 
-### WordPress 配对与前台
+安装器校验 SHA-256，安装到 `/opt/ts3pilot`，创建 `/usr/local/bin/ts3pilot`；校验失败保留旧程序，重装保留用户配置。
 
-1. **TS3Pilot → Settings**：Agent 地址 `http://127.0.0.1:17880`（同机）+ 配对码
-   → **Complete pairing**。
-2. 前台：使用 **TS3 Status** Gutenberg 区块，或经典短代码
-   `[ts3_status]`、`[ts3_status node="..." show_channels="true"]`、
-   `[ts3_identity]`。
+**大陆服务器：先看[大陆网络安装、离线转存与升级](docs/mainland-install.md)。** jsDelivr 提供仓库文件，不提供 GitHub Release 二进制；下载脚本成功不代表下载程序成功。文档提供固定版本/可信摘要、镜像尝试和完全离线安装三条路径。
 
-直接运行 `ts3pilot`（不带参数）会进入**交互式双语控制台**（English /
-简体中文）。
+## 新建或接管：按顺序配置
 
-## 常用 CLI 命令速查
+先按[生产部署文档](docs/deployment.md)创建服务账户和 `/var/lib/ts3pilot/config.json`，再设置 `mode=production`。默认 `development` 模式使用 mock，不能据此判断真实 TS3 是否已安装。
 
-| 命令 | 说明 |
+| 场景 | 下一步 |
+| --- | --- |
+| 新建服务器 | 从官方 HTTPS 来源确认 TS3 版本与 SHA-256，明确接受官方许可，再执行 `ts3pilot install`；配置目录所有权、Query 凭据和服务托管 |
+| 已有服务器 | 设置真实 `ts3.installPath`，执行只读 `ts3pilot adopt`，匹配既有服务账户与启动参数；不要用 `install --force` 覆盖旧服 |
+| 远程/Docker 服务器 | 配置 Query 地址及部署类型；文件操作只能使用实际可访问的本地数据目录 |
+
+以下命令始终使用同一份配置；Query 用户名和密码通过受保护编辑器填写，避免写入 shell 历史。
+
+```bash
+sudo -u ts3 ts3pilot doctor --config /var/lib/ts3pilot/config.json
+sudo -u ts3 ts3pilot api enable --config /var/lib/ts3pilot/config.json
+```
+
+复制一次性配对码，按部署文档用 systemd 启动 Agent。Agent 默认监听 `127.0.0.1:17880`；服务启停需要相应的系统授权。直接运行 `ts3pilot` 可进入中英双语交互控制台。
+
+## WordPress 控制面板
+
+1. 下载正式 Release 的 ZIP，在 WordPress「插件 → 安装插件 → 上传插件」安装并激活。不要上传仓库源码 ZIP。
+2. 在 **TS3Pilot → Settings** 填写 Agent URL 和配对码；配对码 15 分钟内有效且只能使用一次。
+3. 确认连接返回 CLI 0.4.1、production 模式及真实 Query provider，再检查状态、客户端和频道管理。
+4. 页面添加 **TS3 Status** 区块或 `[ts3_status show_channels="true"]`；身份入口使用 `[ts3_identity]`。
+
+同机原生部署可以用回环地址；Docker 容器各有自己的回环网络。跨主机连接按部署文档配置 HTTPS 与来源限制。**GitHub/npm 不可达不会阻断已经配对的本地管理功能**，但会影响在线安装和自动更新；WordPress 可以手动上传已校验的新版 ZIP。
+
+## 常用操作
+
+| 命令 | 用途 |
 | --- | --- |
 | `ts3pilot status / start / stop / restart` | 服务状态与启停 |
-| `ts3pilot doctor` | 深度诊断（端口/权限/SQLite/Query 鉴权） |
-| `ts3pilot adopt` | 只读接管分析（已有服务器） |
-| `ts3pilot install --accept-eula --setup-firewall` | 官方源下载安装 TS3 Server |
-| `ts3pilot backup [--dest x.tar.gz]` | 真实 tar.gz 备份 + manifest |
-| `ts3pilot restore --backup x.tar.gz --dry-run` | 恢复预检（不写盘） |
-| `ts3pilot restore --backup x.tar.gz --force` | 真实恢复（破坏性） |
+| `ts3pilot doctor` | 路径、权限、Query 登录和 Agent 诊断 |
+| `ts3pilot adopt` | 只读接管分析 |
+| `ts3pilot backup --dest backup.tar.gz` | 备份；生产备份前先停止自己的 TS3 服务 |
+| `ts3pilot restore --backup backup.tar.gz --dry-run` | 恢复预检；实际恢复前先停服并保留独立备份 |
+| `ts3pilot update check / self` | 检查/更新 CLI；不会升级第三方 TS3 Server |
 | `ts3pilot logs --lines 100` | 查看日志 |
-| `ts3pilot api enable / status / disable` | Agent API 生命周期 |
-| `ts3pilot identity worker once` | 身份核验单轮扫描 |
-| `ts3pilot systemd generate ts3server` | 生成加固 systemd unit |
 
-## WordPress 后台能力与权限
+以上操作追加 `--config /var/lib/ts3pilot/config.json`。WordPress 角色权限与 TeamSpeak 权限相互独立；Agent 只提供固定动作，没有任意 shell 命令接口。
 
-`manage_ts3_view`、`manage_ts3_clients`、`manage_ts3_channels`、
-`manage_ts3_server`、`manage_ts3_maintenance`、`manage_ts3_users`——激活时默认
-授予 administrator，可按角色自定义。**WordPress 权限与 TeamSpeak 权限完全
-平行**，互不自动同步。
+## 已验证范围
 
-## 安全要点
+v0.4.1 通过 127 项 Node、59 项 PHP 测试；官方 TS3 在 Ubuntu 24.04 的新建、只读接管及真实 WordPress 联调通过。CLI/Agent 以非特权用户通过 17 个仍受支持的 Linux 镜像检查，涵盖 Ubuntu、Debian、Rocky Linux、Fedora、openSUSE、Alpine 和 Arch。容器兼容检查覆盖用户空间，不等同于所有发行版的完整 systemd/SELinux 或 TS3 第三方二进制验证。
 
-- Agent API 默认只监听 `127.0.0.1:17880`，与 TS3 端口严格分离。
-- HMAC-SHA256 v1 签名 + 时间窗 + nonce 防重放；配对码一次性、15 分钟有效。
-- 多节点凭据独立存储与签名；恢复/解包有路径沙箱。
+## 文档与开发
 
-## 文档索引
+- [生产部署：新建、接管、Query、systemd 和 WordPress](docs/deployment.md)
+- [大陆网络安装与升级](docs/mainland-install.md)
+- [快速上手与常见问题](docs/quickstart-zh.md)
+- [开发、测试和发布](docs/development.md)
+- [架构](docs/architecture.md) · [Agent API](docs/api/agent-api-v1.md) · [安全说明](SECURITY.md)
+- [版本变更](CHANGELOG.md) · [v0.4.1 说明](docs/release-notes-v0.4.1.md)
 
-- [docs/quickstart-zh.md](docs/quickstart-zh.md) — 中文保姆级上手 + FAQ
-- [docs/quickstart-en.md](docs/quickstart-en.md) — English quick start + FAQ
-- [docs/architecture.md](docs/architecture.md) — 架构
-- [SECURITY.md](SECURITY.md) — 威胁模型
-- [docs/development.md](docs/development.md) — 开发
-- [docs/deployment.md](docs/deployment.md) — 部署与 systemd
-- [docs/api/agent-api-v1.md](docs/api/agent-api-v1.md) — Agent API 协议
-- [CHANGELOG.md](CHANGELOG.md) — 变更记录
+源码开发使用 `npm ci`，不要在生产服务器为运行独立包执行源码构建。
 
-## License / 第三方声明
+## 许可与维护
 
-项目代码：Apache-2.0（[LICENSE](LICENSE)）。第三方依赖与 TeamSpeak 许可边界
-见 [docs/notice.md](docs/notice.md)。
+项目代码采用 [Apache-2.0](LICENSE)，不捆绑或重新分发 TeamSpeak Server。使用 TS3 必须遵守官方许可；第三方说明见 [NOTICE](docs/notice.md)。本项目与 TeamSpeak Systems GmbH 无隶属或背书关系。
 
-## Authors & Credits
-
-- **Architecture & Maintainer:** dazaiyuki
-- **AI-assisted development tool:** OpenAI Codex CLI
+维护者：dazaiyuki；AI 辅助开发工具：OpenAI Codex CLI。
