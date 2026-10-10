@@ -82,7 +82,7 @@ v0.5.0 通过 130 项 Node、63 项 PHP 测试；官方 TS3 在 Ubuntu 24.04 的
 - [快速上手与常见问题](docs/quickstart-zh.md)
 - [开发、测试和发布](docs/development.md)
 - [架构](docs/architecture.md) · [Agent API](docs/api/agent-api-v1.md) · [安全说明](SECURITY.md)
-- [版本变更](CHANGELOG.md) · [v0.5.0 说明](docs/release-notes-v0.5.0.md)
+- [版本变更](CHANGELOG.md) · [v0.5.0 说明](docs/release-notes-v0.5.0.zh-CN.md)
 
 源码开发使用 `npm ci`，不要在生产服务器为运行独立包执行源码构建。
 

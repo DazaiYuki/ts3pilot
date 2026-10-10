@@ -1,10 +1,10 @@
 # Quick start and FAQ
 
-Production uses the standalone Linux x86_64 binary: Node/npm are not required. The stable Release is [v0.4.1](https://github.com/DazaiYuki/ts3pilot/releases/tag/v0.4.1); npm's published package remains 0.4.0 as checked on 2026-10-09.
+Production uses the standalone Linux x86_64 binary: Node/npm are not required. The stable Release is [v0.5.0](https://github.com/DazaiYuki/ts3pilot/releases/tag/v0.5.0); npm's published package remains 0.4.0 as checked on 2026-10-10.
 
 ## Production sequence
 
-1. [Install the CLI](../README.md#install-the-cli); for restricted networks see the [mainland/offline guide](mainland-install.md).
+1. [Install the CLI](../README.md#install-the-cli).
 2. Follow [production deployment](deployment.md) to create the service account and explicit configuration, then select production mode.
 3. **New server**: confirm the official TS3 archive digest, explicitly accept its license, install and configure ownership and systemd. **Existing server**: configure its directory, run read-only `adopt`, and retain the existing service and data.
 4. Edit real Query credentials with a protected editor and run `doctor` using the same `--config`.
@@ -29,7 +29,7 @@ Use the TS3 Status block or `[ts3_status]` and `[ts3_status node="node-id" show_
 
 ## Backups and upgrades
 
-Stop your TS3 service before a production backup; inspect and trial-restore it. Keep a separate backup before an actual restore. CLI self-update does not update the third-party TS3 Server. If GitHub API access is unavailable, use the verified offline installer and upload a verified WordPress ZIP manually.
+Stop your TS3 service before a production backup; inspect and trial-restore it. Keep a separate backup before an actual restore. CLI self-update does not update the third-party TS3 Server.
 
 ## Source development
 
