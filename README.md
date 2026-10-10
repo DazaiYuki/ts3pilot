@@ -13,7 +13,7 @@ Create or adopt a TeamSpeak 3 server on Linux. The independent CLI/Agent manages
 | TypeScript development and tests | Repository and npm dependencies | Node 24, or Node 22.6+ with type stripping enabled |
 | Install through npm | `@ts3pilot/ts3-manager` | npm is required for installation; the package contains a standalone Linux x86_64 binary |
 
-**Stable Release: [v0.5.0](https://github.com/DazaiYuki/ts3pilot/releases/tag/v0.5.0).** As checked on 2026-10-09, the official npm package is still **0.4.0**. The npm `.tgz` attached to a GitHub Release does not mean that version has been published to the registry. Third-party registries may also lag.
+**Stable Release: [v0.5.0](https://github.com/DazaiYuki/ts3pilot/releases/tag/v0.5.0).** As checked on 2026-10-10, the official npm package is still **0.4.0**. The npm `.tgz` attached to a GitHub Release does not mean that version has been published to the registry. Third-party registries may also lag.
 
 ## Install the CLI
 
