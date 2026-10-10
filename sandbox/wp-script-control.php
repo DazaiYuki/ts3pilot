@@ -6,9 +6,28 @@ try {
     $info = $client->info();
     if ($info['systemProvider'] !== 'script') throw new RuntimeException('Expected native script provider');
     $beforeChannels = $client->request('GET', '/v1/ts3/channels');
+    $expires = time() + 600;
+    $token = WP_Session_Tokens::get_instance(1)->create($expires);
+    $loggedCookie = wp_generate_auth_cookie(1, $expires, 'logged_in', $token);
+    $_COOKIE[LOGGED_IN_COOKIE] = $loggedCookie;
+    $nonce = wp_create_nonce('ts3pilot_service');
+    $submit = static function ($action, $nonceValue) use ($expires, $token, $loggedCookie) {
+        return wp_remote_post(home_url('/wp-admin/admin-post.php'), array(
+            'timeout' => 90, 'redirection' => 0,
+            'cookies' => array(
+                new WP_Http_Cookie(array('name' => AUTH_COOKIE, 'value' => wp_generate_auth_cookie(1, $expires, 'auth', $token))),
+                new WP_Http_Cookie(array('name' => LOGGED_IN_COOKIE, 'value' => $loggedCookie)),
+            ),
+            'body' => array('action' => 'ts3pilot_service', 'service_action' => $action, 'ts3pilot_nonce' => $nonceValue),
+        ));
+    };
+    $denied = $submit('stop', 'invalid-nonce');
+    if (wp_remote_retrieve_response_code($denied) !== 403) throw new RuntimeException('Service form accepted an invalid nonce');
+    if ($client->request('GET', '/v1/system/status')['state'] !== 'running') throw new RuntimeException('Denied form changed service state');
+    echo "PASS WordPress service form CSRF denial\n";
     foreach (array('stop' => 'stopped', 'start' => 'running', 'restart' => 'running') as $action => $expected) {
-        $result = $client->request('POST', '/v1/system/' . $action, array('action' => $action));
-        if ($result['state'] !== $expected) throw new RuntimeException('Wrong state after ' . $action);
+        $result = $submit($action, $nonce);
+        if (wp_remote_retrieve_response_code($result) !== 302 || !str_contains(wp_remote_retrieve_header($result, 'location'), 'ts3pilot_result=success')) throw new RuntimeException('Service form failed: ' . $action);
         $status = $client->request('GET', '/v1/system/status');
         if ($status['state'] !== $expected) throw new RuntimeException('Wrong script status after ' . $action);
         echo 'PASS WordPress native script ', $action, "\n";
