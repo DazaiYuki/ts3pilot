@@ -6,8 +6,8 @@
 
 | 渠道 | 内容 | 注意事项 |
 | --- | --- | --- |
-| GitHub Release | 最新独立 CLI、WordPress ZIP、npm `.tgz` 和 SHA-256 文件 | 当前稳定版本 0.4.1 |
-| npm 官方 registry | 已发布的 `@ts3pilot/ts3-manager` 包 | 2026-10-09 查询仍为 0.4.0；Release 附件不会自动发布到 npm |
+| GitHub Release | 最新独立 CLI、WordPress ZIP、npm `.tgz` 和 SHA-256 文件 | 当前稳定版本 0.5.0 |
+| npm 官方 registry | 已发布的 `@ts3pilot/ts3-manager` 包 | 2026-10-10 查询仍为 0.4.0；Release 附件不会自动发布到 npm |
 | npmmirror | npm 包镜像 | 可能同步延迟；不是 GitHub Release 镜像 |
 | jsDelivr | 仓库的脚本和文档 | 不提供 Release 二进制；`@main` 文件会更新 |
 | 第三方 GitHub 下载代理 | 尝试转发公开 Release 资产 | 可用性由运营方与实际网络决定；仍需验证原始可信摘要 |
@@ -24,36 +24,36 @@
 
 ```bash
 curl -fsSL --max-time 30 https://cdn.jsdelivr.net/gh/DazaiYuki/ts3pilot@ab7e30417ad5ea9714c3a3d84655bd568ba777d3/scripts/install.sh -o install-ts3pilot.sh
-sudo env TS3PILOT_VERSION=0.4.1 \
-  TS3PILOT_SHA256=3de1e4012f8c9bdb40187844b9006d8778b4c8a881c89152cca36367ca09871d \
+sudo env TS3PILOT_VERSION=0.5.0 \
+  TS3PILOT_SHA256=59d21299d0a9ecfb741f71f5aed1ffaf93467b3d7771254a6fa721265aa16876 \
   TS3PILOT_MIRROR=jsdelivr bash install-ts3pilot.sh
 ```
 
-安装器依次尝试 gh-proxy、mirror.ghproxy 和 GitHub 官方下载。**这个选项并不保证代理可用**；全部失败则保留旧程序，改走路线三。此处 jsDelivr URL 固定安装器源码提交，`TS3PILOT_VERSION=0.4.1` 固定程序资产，避免缓存旧脚本或意外安装其他版本。
+安装器依次尝试 gh-proxy、mirror.ghproxy 和 GitHub 官方下载。**这个选项并不保证代理可用**；全部失败则保留旧程序，改走路线三。此处 jsDelivr URL 固定安装器源码提交，`TS3PILOT_VERSION=0.5.0` 固定程序资产，避免缓存旧脚本或意外安装其他版本。
 
-以下摘要来自正式 v0.4.1 Release，并已与实际下载文件及 GitHub 资产摘要核对。只适用于这些文件；升级其他版本时，从可信的正式发布渠道重新获取对应摘要，不要沿用本表或只信任代理一起提供的 `.sha256`。
+以下摘要来自正式 v0.5.0 Release，并已与实际下载文件及 GitHub 资产摘要核对。只适用于这些文件；升级其他版本时，从可信的正式发布渠道重新获取对应摘要，不要沿用本表或只信任代理一起提供的 `.sha256`。
 
 | 文件 | SHA-256 |
 | --- | --- |
-| `ts3pilot-linux-x64-v0.4.1.tar.gz` | `3de1e4012f8c9bdb40187844b9006d8778b4c8a881c89152cca36367ca09871d` |
-| `ts3pilot-wp-v0.4.1.zip` | `c607d82843eee615559cddfbfe9fa5dc97ab63645e34193c29d1d9ad2bff10f4` |
+| `ts3pilot-linux-x64-v0.5.0.tar.gz` | `59d21299d0a9ecfb741f71f5aed1ffaf93467b3d7771254a6fa721265aa16876` |
+| `ts3pilot-wp-v0.5.0.zip` | `872cc186132ba67573f16119ea585eb26c6386623ff1a30bfc0eb0c011685a7d` |
 
-正式来源：[v0.4.1 Release](https://github.com/DazaiYuki/ts3pilot/releases/tag/v0.4.1)。
+正式来源：[v0.5.0 Release](https://github.com/DazaiYuki/ts3pilot/releases/tag/v0.5.0)。
 
 ## 路线三：离线转存，服务器完全不访问 GitHub
 
 在能访问 GitHub 的电脑下载以下文件，然后通过 SSH/SFTP 上传到服务器自己的工作目录：
 
-- `ts3pilot-linux-x64-v0.4.1.tar.gz`
-- `ts3pilot-wp-v0.4.1.zip`（需要面板时）
-- 支持本地档案的 [install.sh](https://raw.githubusercontent.com/DazaiYuki/ts3pilot/ab7e30417ad5ea9714c3a3d84655bd568ba777d3/scripts/install.sh)（本次增加了该功能；v0.4.1 标签中的旧安装器没有此选项）
+- `ts3pilot-linux-x64-v0.5.0.tar.gz`
+- `ts3pilot-wp-v0.5.0.zip`（需要面板时）
+- 支持本地档案的 [install.sh](https://raw.githubusercontent.com/DazaiYuki/ts3pilot/ab7e30417ad5ea9714c3a3d84655bd568ba777d3/scripts/install.sh)（此固定提交及 v0.5.0 安装器均支持本地档案）
 
 使用当前安装器安装本地包，必须同时提供固定版本和可信 SHA-256。它不会为此访问版本 API、摘要文件或下载代理：
 
 ```bash
-sudo env TS3PILOT_VERSION=0.4.1 \
-  TS3PILOT_SHA256=3de1e4012f8c9bdb40187844b9006d8778b4c8a881c89152cca36367ca09871d \
-  TS3PILOT_ARCHIVE="$PWD/ts3pilot-linux-x64-v0.4.1.tar.gz" \
+sudo env TS3PILOT_VERSION=0.5.0 \
+  TS3PILOT_SHA256=59d21299d0a9ecfb741f71f5aed1ffaf93467b3d7771254a6fa721265aa16876 \
+  TS3PILOT_ARCHIVE="$PWD/ts3pilot-linux-x64-v0.5.0.tar.gz" \
   bash ./install.sh
 ts3pilot version
 ```
@@ -65,8 +65,8 @@ ts3pilot version
 WordPress ZIP 在上传前校验：
 
 ```bash
-printf '%s  ts3pilot-wp-v0.4.1.zip\n' \
-  c607d82843eee615559cddfbfe9fa5dc97ab63645e34193c29d1d9ad2bff10f4 | sha256sum -c -
+printf '%s  ts3pilot-wp-v0.5.0.zip\n' \
+  872cc186132ba67573f16119ea585eb26c6386623ff1a30bfc0eb0c011685a7d | sha256sum -c -
 ```
 
 通过 WordPress 后台上传并激活/替换正式插件。无需 WordPress 服务器连接 GitHub；已有设置与配对存储在 WordPress 数据库中，更新前按正常流程备份。
@@ -88,7 +88,7 @@ CLI 镜像设置**不会代理 TeamSpeak 的官方服务器下载**。新建流�
 
 WordPress 自动更新也依赖 GitHub API 和资产下载，无法访问时手动上传已校验的 ZIP。GitHub 下载代理不能用作 Agent 地址。
 
-如果服务器已有你配置的 HTTP CONNECT 出口代理，v0.4.1 内置的 Node 24 运行时可通过 `NODE_USE_ENV_PROXY=1` 使用代理环境变量。curl 的代理配置不会自动让 CLI 的 Node fetch 走代理；sudo 也可能清除环境变量。例子中的地址必须换成服务器实际可达、由你管理的代理，不能直接沿用自己电脑的回环地址：
+如果服务器已有你配置的 HTTP CONNECT 出口代理，v0.5.0 内置的 Node 24 运行时可通过 `NODE_USE_ENV_PROXY=1` 使用代理环境变量。curl 的代理配置不会自动让 CLI 的 Node fetch 走代理；sudo 也可能清除环境变量。例子中的地址必须换成服务器实际可达、由你管理的代理，不能直接沿用自己电脑的回环地址：
 
 ```bash
 sudo env NODE_USE_ENV_PROXY=1 HTTPS_PROXY=http://127.0.0.1:7890 \

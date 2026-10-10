@@ -13,7 +13,7 @@
 | 修改 TypeScript 源码、运行开发测试 | Git 仓库 + npm | Node 24，或 Node 22.6+ 配合类型擦除选项 |
 | 使用 npm 安装 CLI | `@ts3pilot/ts3-manager` | 安装时需要 npm；包内仍是 Linux x86_64 独立二进制 |
 
-**当前稳定版本：[v0.5.0](https://github.com/DazaiYuki/ts3pilot/releases/tag/v0.5.0)。** 2026-10-09 查询时 npm 官方包仍是 **0.4.0**，不要把 `npm install -g` 当作安装 0.5.0 的方式。Release 中的 npm `.tgz` 是分发文件，不代表同版本已发布到 npm registry；第三方镜像也可能延迟同步。
+**当前稳定版本：[v0.5.0](https://github.com/DazaiYuki/ts3pilot/releases/tag/v0.5.0)。** 2026-10-10 查询时 npm 官方包仍是 **0.4.0**，不要把 `npm install -g` 当作安装 0.5.0 的方式。Release 中的 npm `.tgz` 是分发文件，不代表同版本已发布到 npm registry；第三方镜像也可能延迟同步。
 
 ## 安装 CLI
 
