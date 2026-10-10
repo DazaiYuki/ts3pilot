@@ -73,7 +73,7 @@ Append `--config /var/lib/ts3pilot/config.json`. WordPress role permissions and 
 
 ## Validation
 
-v0.5.0 passes 129 Node and 63 PHP tests, real official TS3 installation and independent manual tar/script adoption and service control on Ubuntu 24.04, and real WordPress integration. Unprivileged CLI/Agent checks pass on 17 maintained Linux images across Ubuntu, Debian, Rocky Linux, Fedora, openSUSE, Alpine and Arch. Container checks cover user space, not every distribution's systemd/SELinux configuration or third-party TS3 binary.
+v0.5.0 passes 130 Node and 63 PHP tests, real official TS3 installation and independent manual tar/script adoption and service control on Ubuntu 24.04, and real WordPress integration. Unprivileged CLI/Agent checks pass on 17 maintained Linux images across Ubuntu, Debian, Rocky Linux, Fedora, openSUSE, Alpine and Arch. Container checks cover user space, not every distribution's systemd/SELinux configuration or third-party TS3 binary.
 
 ## Documentation and development
 

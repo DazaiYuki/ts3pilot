@@ -73,12 +73,12 @@ class ConsoleLogger implements Logger {
     const safeMeta = redact({ ...this.baseMeta, ...meta });
     const timestamp = new Date().toISOString();
     if (this.json) {
-      process.stdout.write(`${JSON.stringify({ timestamp, level, message, ...safeMeta })}\n`);
+      process.stderr.write(`${JSON.stringify({ timestamp, level, message, ...safeMeta })}\n`);
       return;
     }
     const metaText = safeMeta && Object.keys(safeMeta).length > 0 ? ` ${inspect(safeMeta, { breakLength: 120 })}` : '';
     const prefix = level === 'error' ? 'ERROR' : level === 'warn' ? 'WARN' : level === 'debug' ? 'DEBUG' : 'INFO';
-    process.stdout.write(`${timestamp} ${prefix} ${message}${metaText}\n`);
+    process.stderr.write(`${timestamp} ${prefix} ${message}${metaText}\n`);
   }
 }
 

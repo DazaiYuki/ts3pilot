@@ -73,7 +73,7 @@ sudo -u ts3 ts3pilot api enable --config /var/lib/ts3pilot/config.json
 
 ## 已验证范围
 
-v0.5.0 通过 129 项 Node、63 项 PHP 测试；官方 TS3 在 Ubuntu 24.04 的新建、独立 tar 解压脚本旧服接管与启停及真实 WordPress 联调通过。CLI/Agent 以非特权用户通过 17 个仍受支持的 Linux 镜像检查，涵盖 Ubuntu、Debian、Rocky Linux、Fedora、openSUSE、Alpine 和 Arch。容器兼容检查覆盖用户空间，不等同于所有发行版的完整 systemd/SELinux 或 TS3 第三方二进制验证。
+v0.5.0 通过 130 项 Node、63 项 PHP 测试；官方 TS3 在 Ubuntu 24.04 的新建、独立 tar 解压脚本旧服接管与启停及真实 WordPress 联调通过。CLI/Agent 以非特权用户通过 17 个仍受支持的 Linux 镜像检查，涵盖 Ubuntu、Debian、Rocky Linux、Fedora、openSUSE、Alpine 和 Arch。容器兼容检查覆盖用户空间，不等同于所有发行版的完整 systemd/SELinux 或 TS3 第三方二进制验证。
 
 ## 文档与开发
 
