@@ -34,6 +34,7 @@ smoke_check(str_contains($block, 'Block join') && str_contains($block, 'ts3serve
 ob_start(); (new Ts3Pilot\Frontend\StatusWidget())->widget(array(), array('display' => 'join')); $widget = ob_get_clean();
 smoke_check(str_contains($widget, 'ts3server://'), 'Classic join widget missing');
 smoke_check(isset($GLOBALS['wp_widget_factory']->widgets[Ts3Pilot\Frontend\StatusWidget::class]), 'Widget not registered');
+require_once ABSPATH . 'wp-admin/includes/admin.php';
 ob_start(); (new Ts3Pilot\Admin\SettingsPage($client, $repository))->render(); $settingsHtml = ob_get_clean();
 smoke_check(str_contains($settingsHtml, 'ts3pilot_settings[join_policy]') && str_contains($settingsHtml, 'ts3pilot_settings[join_label]'), 'Join settings controls missing');
 smoke_check(!str_contains($settingsHtml, $result['credential']), 'Settings page exposed credential');

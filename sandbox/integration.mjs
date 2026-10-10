@@ -32,7 +32,18 @@ const wait = async (check, label) => {
 const launch = (name, args) => { containers.push(name); docker('run', '-d', '--name', name, ...args); };
 const wpEnv = ['-e', `WORDPRESS_DB_HOST=${dbName}`, '-e', 'WORDPRESS_DB_NAME=wordpress', '-e', 'WORDPRESS_DB_USER=wordpress', '-e', `WORDPRESS_DB_PASSWORD=${randomBytes(24).toString('hex')}`];
 const dbPassword = wpEnv[7].slice('WORDPRESS_DB_PASSWORD='.length);
-const wp = (...args) => docker('run', '--rm', '--user=0', '--network', `container:${wpName}`, '-v', `${volume}:/var/www/html`, '-v', `${work}:/state:ro`, '-v', `${root}/sandbox:/checks:ro`, '-v', `${root}/dist/release:/artifacts:ro`, ...wpEnv, 'wordpress:cli', 'wp', '--allow-root', ...args);
+const wp = (...args) => {
+  try { return docker('run', '--rm', '--user=0', '--network', `container:${wpName}`, '-v', `${volume}:/var/www/html`, '-v', `${work}:/state:ro`, '-v', `${root}/sandbox:/checks:ro`, '-v', `${root}/dist/release:/artifacts:ro`, ...wpEnv, 'wordpress:cli', 'wp', '--allow-root', ...args); }
+  catch (error) {
+    // Only smoke-test markers, never command arguments or PHP stack traces.
+    if (args[0] === 'eval-file') {
+      for (const line of String(error.stdout ?? '').split('\n').filter(line => /^(PASS|FAIL) /.test(line))) {
+        console.error(line.replace(/[A-Za-z0-9_+=\/-]{24,}/g, '[redacted]'));
+      }
+    }
+    throw error;
+  }
+};
 const privateWrite = (path, content) => writeFileSync(path, content, { mode: 0o600 });
 const getQueryPassword = logs => {
   const password = logs.match(/password=\s*"([^"]+)"/)?.[1];
