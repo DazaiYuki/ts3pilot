@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { accessSync, constants } from 'node:fs';
 import { AppError, ErrorCode } from '../../domain/errors.ts';
 import type { ServiceStatus } from '../../domain/models.ts';
 import type { AppConfig } from '../../domain/schemas.ts';
@@ -28,20 +29,16 @@ export class ScriptServiceManager implements ServiceManager {
 
   async isAvailable(): Promise<boolean> {
     if (process.platform === 'win32') return false;
-    return this.config.ts3.installPath.length > 0;
+    try { accessSync(this.scriptPath(), constants.X_OK); return true; } catch { return false; }
   }
 
   private async run(verb: 'start' | 'stop' | 'restart' | 'status'): Promise<ServiceStatus> {
     this.guard();
-    const result = await runProcess(this.scriptPath(), [verb], { timeoutMs: 60000 });
+    const result = await runProcess(this.scriptPath(), [verb], { cwd: this.config.ts3.installPath, timeoutMs: 60000 });
     if (result.exitCode !== 0) {
       throw new AppError(ErrorCode.SYSTEM, `${this.scriptPath()} ${verb} failed: ${result.stderr.trim() || `exit ${result.exitCode}`}`);
     }
-    return {
-      state: verb === 'status' ? 'running' : 'unknown',
-      provider: this.providerName,
-      message: result.stdout.trim() || undefined,
-    };
+    return this.status();
   }
 
   async start(): Promise<ServiceStatus> {
@@ -58,10 +55,12 @@ export class ScriptServiceManager implements ServiceManager {
 
   async status(): Promise<ServiceStatus> {
     this.guard();
-    const result = await runProcess(this.scriptPath(), ['status'], { timeoutMs: 15000 });
-    if (result.exitCode === 0) {
-      return { state: 'running', provider: this.providerName, message: result.stdout.trim() || undefined };
-    }
-    return { state: 'stopped', provider: this.providerName, message: result.stderr.trim() || undefined };
+    const result = await runProcess(this.scriptPath(), ['status'], { cwd: this.config.ts3.installPath, timeoutMs: 15000 });
+    const message = (result.stdout || result.stderr).trim();
+    const stopped = /server is not running|no server running/i.test(message);
+    const running = /server is running/i.test(message);
+    const pid = message.match(/PID\s*:?\s*(\d+)/i)?.[1];
+    return { state: result.timedOut || result.overflow ? 'unknown' : stopped ? 'stopped' : running && result.exitCode === 0 ? 'running' : 'unknown',
+      provider: this.providerName, pid: running && pid ? Number(pid) : undefined, message: message || undefined };
   }
 }

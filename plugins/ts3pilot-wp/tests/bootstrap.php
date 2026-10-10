@@ -117,12 +117,13 @@ function esc_attr( string $value ): string {
 	return htmlspecialchars( $value, ENT_QUOTES, 'UTF-8' );
 }
 
-function esc_url( string $value ): string {
-	return $value;
+function esc_url( string $value, array $protocols = array( 'http', 'https' ) ): string {
+	return '' === esc_url_raw( $value, $protocols ) ? '' : htmlspecialchars( $value, ENT_QUOTES, 'UTF-8' );
 }
 
-function esc_url_raw( string $value ): string {
-	return $value;
+function esc_url_raw( string $value, array $protocols = array( 'http', 'https' ) ): string {
+	$scheme = parse_url( $value, PHP_URL_SCHEME );
+	return $scheme && ! in_array( $scheme, $protocols, true ) ? '' : $value;
 }
 
 /**
@@ -426,4 +427,13 @@ function get_userdata( int $user_id ) {
 
 function wp_generate_uuid4(): string {
 	return bin2hex( random_bytes( 16 ) );
+}
+
+function wp_get_current_user(): object {
+	return (object) array( 'roles' => $GLOBALS['__ts3pilot_current_roles'] ?? array() );
+}
+class WP_Widget {
+	public function __construct( string $id = '', string $name = '', array $options = array() ) {}
+	public function get_field_id( string $key ): string { return 'widget-' . $key; }
+	public function get_field_name( string $key ): string { return 'widget[' . $key . ']'; }
 }

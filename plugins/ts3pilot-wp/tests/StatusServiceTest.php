@@ -13,6 +13,7 @@ use PHPUnit\Framework\TestCase;
 use Ts3Pilot\Agent\Client;
 use Ts3Pilot\Services\StatusService;
 use Ts3Pilot\Settings\Repository;
+use Ts3Pilot\Settings\NodeRegistry;
 
 final class StatusServiceTest extends TestCase {
 	protected function setUp(): void {
@@ -85,5 +86,35 @@ final class StatusServiceTest extends TestCase {
 		$channels = $service->get_channels_snapshot( true );
 		$this->assertSame( array(), $channels );
 		$this->assertArrayNotHasKey( 'error', $channels );
+	}
+	public function test_switching_active_nodes_does_not_reuse_another_nodes_cached_status(): void {
+		$repository = new Repository();
+		$registry   = new NodeRegistry( $repository );
+		$service    = new StatusService( new Client( $repository ), $repository );
+		foreach ( array( 'same-prefix-123456-first', 'same-prefix-123456-second' ) as $id ) {
+			$registry->upsert(
+				array(
+					'node_id'    => $id,
+					'endpoint'   => 'http://127.0.0.1:17880',
+					'credential' => 'secret',
+				)
+			);
+			$registry->set_active( $id );
+			$GLOBALS['__ts3pilot_http_queue'][] = array(
+				'response' => array( 'code' => 200 ),
+				'body'     => wp_json_encode(
+					array(
+						'ok'   => true,
+						'data' => array(
+							'online' => true,
+							'name'   => $id,
+						),
+					)
+				),
+			);
+			$this->assertSame( $id, $service->get_snapshot()['name'] );
+			$this->assertSame( $id, $service->get_snapshot( false, $id )['name'] );
+		}
+		$this->assertCount( 0, $GLOBALS['__ts3pilot_http_queue'] );
 	}
 }

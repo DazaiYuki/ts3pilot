@@ -16,6 +16,7 @@ use Ts3Pilot\Agent\Client;
 use Ts3Pilot\Frontend\Block;
 use Ts3Pilot\Frontend\IdentityShortcode;
 use Ts3Pilot\Frontend\Shortcode;
+use Ts3Pilot\Frontend\StatusWidget;
 use Ts3Pilot\Rest\Routes;
 use Ts3Pilot\Services\StatusService;
 use Ts3Pilot\Settings\Repository;
@@ -41,6 +42,12 @@ final class Plugin {
 		add_action( 'init', array( Capabilities::class, 'register' ) );
 		add_action( 'init', array( $this, 'register_services' ) );
 		add_action( 'plugins_loaded', array( $this, 'init_components' ) );
+		add_action(
+			'widgets_init',
+			static function (): void {
+				register_widget( StatusWidget::class );
+			}
+		);
 	}
 
 	public function register_services(): void {

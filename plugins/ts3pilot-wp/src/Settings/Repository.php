@@ -21,6 +21,7 @@ final class Repository {
 		'join_policy'              => 'hidden',
 		'join_role'                => '',
 		'join_url'                 => '',
+		'join_label'               => '加入语音',
 		'show_name'                => true,
 		'show_online'              => true,
 		'show_max'                 => true,

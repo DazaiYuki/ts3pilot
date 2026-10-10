@@ -99,3 +99,10 @@
 .ts3-status-error {
 	color: var(--ts3-muted);
 }
+
+.ts3-status-card[data-ts3-state="offline"] .ts3-status-online::before { background: #d63638; }
+.ts3-status-join:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+.ts3-status-join:hover { filter: brightness(1.08); }
+.ts3-status-channel { display: block; }
+.ts3-status-channel-count { float: right; }
+.ts3-status-name { overflow-wrap: anywhere; }

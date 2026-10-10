@@ -183,7 +183,11 @@ export async function pokeHandler(ctx: HandlerContext): Promise<HandlerResult> {
 }
 
 export async function systemActionHandler(ctx: HandlerContext): Promise<HandlerResult> {
-  const body = validateSystemActionBody(ctx.body);
+  const supplied = typeof ctx.body === 'object' && ctx.body !== null && 'action' in ctx.body ? ctx.body.action : undefined;
+  if (supplied !== undefined && supplied !== ctx.route.action) {
+    throw new AppError(ErrorCode.VALIDATION, 'System action must match the authenticated route', { httpStatus: 400 });
+  }
+  const body = validateSystemActionBody({ action: ctx.route.action });
   switch (body.action) {
     case 'start':
       return { status: 200, data: await ctx.services.start() };

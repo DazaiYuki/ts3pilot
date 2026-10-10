@@ -12,11 +12,11 @@ CLI 可在 glibc 和 musl 用户空间运行。**TeamSpeak Server 是独立第�
 
 大陆或受限网络请先看[镜像、可信摘要与离线安装指南](mainland-install.md)。独立 CLI 无需安装 Node；npm 包版本与 GitHub Release 不一定同步。
 
-发布 v0.4.1 后：
+发布 v0.5.0 后：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/DazaiYuki/ts3pilot/v0.4.1/scripts/install.sh -o install-ts3pilot.sh
-sudo env TS3PILOT_VERSION=0.4.1 bash install-ts3pilot.sh
+curl -fsSL https://raw.githubusercontent.com/DazaiYuki/ts3pilot/v0.5.0/scripts/install.sh -o install-ts3pilot.sh
+sudo env TS3PILOT_VERSION=0.5.0 bash install-ts3pilot.sh
 /opt/ts3pilot/ts3pilot version
 ```
 
@@ -66,6 +66,18 @@ sudo -u ts3 /opt/ts3pilot/ts3pilot adopt --config /var/lib/ts3pilot/config.json
 
 调整账户、目录所有权和 `system.unitName` 以匹配现有服务，保留既有数据库、许可证、文件和启动参数。对于远程或 Docker 实例配置 `ts3.query.host`、Query 端口和部署类型；文件操作需要正确的本地数据目录，不能把远程路径当作本机目录。
 
+### tar 解压后由官方脚本启动的旧服
+
+保留原来的服务器目录，用启动该服务器的同一个非特权账户运行 CLI 和 Agent。`adopt` 只读分析，不重装、不迁移数据库。明确指定脚本管理：
+
+```bash
+sudo -u ts3 /opt/ts3pilot/ts3pilot config set ts3.deployment.kind native --config /var/lib/ts3pilot/config.json
+sudo -u ts3 /opt/ts3pilot/ts3pilot config set system.provider script --config /var/lib/ts3pilot/config.json
+sudo -u ts3 /opt/ts3pilot/ts3pilot status --config /var/lib/ts3pilot/config.json
+```
+
+脚本必须可执行；CLI 在现有安装目录执行 `ts3server_startscript.sh`。默认 `auto` 在本地安装且没有配置名称的现有 systemd unit 时选择脚本；已有 unit 优先保留 systemd。先核对目录、账户和 Query 配置，再执行 start/stop/restart。原来由 root 启动的进程不能由普通账户直接停止；应安排维护窗口，按原部署方式停止后迁移到专用账户，勿让 Agent 以 root 运行。使用自定义启动参数的服务器，应先确认官方脚本读取的 ini/环境配置与原部署一致。
+
 ## 配置 Query 和 Agent
 
 用本机的受保护编辑器修改 `/var/lib/ts3pilot/config.json`，填写 `ts3.query.username/password` 和实际 `ts3.query.host/rawPort`。生产模式没有有效 Query 配置时不会静默使用 mock。仅有 `/v1/health` 正常不代表 TS3 已连通；还要用 `doctor` 的 Query 登录检查和面板上的真实状态确认。
@@ -98,9 +110,9 @@ polkit.addRule(function(action, subject) {
 
 ## WordPress 控制面板
 
-1. 上传正式 `ts3pilot-wp-v0.4.1.zip` 并激活。
+1. 上传正式 `ts3pilot-wp-v0.5.0.zip` 并激活。
 2. 在 TS3Pilot 设置中填写 Agent URL 和刚生成的单次配对码，15 分钟内完成配对。
-3. 验证连接测试返回 CLI 0.4.1、production 模式和真实 Query provider；检查状态、频道和在线列表。
+3. 验证连接测试返回 CLI 0.5.0、production 模式和真实 Query provider；检查状态、频道和在线列表。
 4. 页面可添加 `[ts3_status]` 或 TS3 Status 区块。WordPress 管理权限和 TS3 权限相互独立；仅给需要的角色授权。
 
 同机推荐回环连接。Docker 中“同机”不代表共享 `127.0.0.1`：需要共享网络命名空间或受限网络与适当的 TLS 反代。跨主机部署需要显式 remote 模式、HTTPS 和来源限制，不能直接公开裸 Agent 端口。本版本的集成测试让 WordPress 与 Agent 共享容器网络命名空间，Agent 仍只监听回环。
@@ -119,3 +131,15 @@ sudo -u ts3 /opt/ts3pilot/ts3pilot restore --backup /var/lib/ts3pilot/backups/ts
 实际恢复使用 `--force`，会覆盖目标文件，必须先停止服务并保留独立备份。备份/恢复不跟随符号链接；无法由 ustar 表示的路径会明确报错，不生成可静默损坏的备份。
 
 `sudo ts3pilot update self --config /var/lib/ts3pilot/config.json` 更新的是 CLI 本身，**不会升级第三方 TS3 Server**。独立 CLI 更新通过 GitHub 官方资产摘要校验、候选版本验证和原子替换完成；随后重启自己的 Agent 服务。WordPress 通过 Release 更新检查器或上传 ZIP 更新。镜像不可用时可以走官方源或提供可信摘要，不能关闭 TLS/校验和保护。
+
+## 前端状态和加入控件
+
+在 **TS3Pilot → Settings** 设置显示字段、主题、加入地址、按钮文字和可见性。加入地址填写玩家连接用的公开地址，例如 `ts3server://voice.example.com?port=9987`，不要填写 Agent 或 Query 管理地址。支持 ts3server、HTTPS 和 HTTP。
+
+- Gutenberg 的 **TS3 Status** 区块提供实时编辑预览和侧栏设置；可覆盖节点、显示字段、主题及加入按钮。
+- 经典主题可在 **外观 → 小工具** 添加 **TS3 Status & Join**，选择状态卡或仅按钮。
+- `[ts3_status show_channels="true"]` 继承全局设置；`[ts3_join join_policy="public" join_label="加入语音"]` 单独显示按钮。可用 `node`、`join_url` 和 `join_role` 覆盖对应选项。
+
+可见性支持隐藏、公开、登录用户、已验证 TS 用户或指定 WordPress 角色；这些策略只控制网站按钮，不改变 TS3 自身权限。对登录/角色策略，应让页面缓存区分用户，避免整页缓存复用个性化内容。状态为服务端缓存，按配置 TTL 和页面刷新更新。
+
+后台概览展示状态和在线人数；维护页显示实际服务状态及启停操作。所有操作仍需要 WordPress 管理能力与 Agent 对应 capability；重启需显式授予 `server.restart`。Agent 接口按固定路由核对操作，不接受请求体改写已鉴权的动作。

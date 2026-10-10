@@ -27,6 +27,7 @@ final class Actions {
 		add_action( 'admin_post_ts3pilot_poke', array( self::class, 'poke' ) );
 		add_action( 'admin_post_ts3pilot_move', array( self::class, 'move' ) );
 		add_action( 'admin_post_ts3pilot_restart', array( self::class, 'restart' ) );
+		add_action( 'admin_post_ts3pilot_service', array( self::class, 'service_action' ) );
 		add_action( 'admin_post_ts3pilot_channel_create', array( self::class, 'channel_create' ) );
 		add_action( 'admin_post_ts3pilot_channel_edit', array( self::class, 'channel_edit' ) );
 		add_action( 'admin_post_ts3pilot_channel_delete', array( self::class, 'channel_delete' ) );
@@ -244,6 +245,25 @@ final class Actions {
 			$result = 'success';
 		} catch ( AgentException $error ) {
 			AuditLog::append( 'server.restart', 'node', 'failed', $error->error_code );
+			$result = 'failed';
+		}
+		wp_safe_redirect( admin_url( 'admin.php?page=ts3pilot-maintenance&ts3pilot_result=' . $result ) );
+		exit;
+	}
+
+	public static function service_action(): void {
+		self::require_capability( Capabilities::MANAGE_MAINTENANCE );
+		check_admin_referer( 'ts3pilot_service', 'ts3pilot_nonce' );
+		$verb = sanitize_key( (string) wp_unslash( $_POST['service_action'] ?? '' ) );
+		if ( ! in_array( $verb, array( 'start', 'stop', 'restart' ), true ) ) {
+			wp_die( 'Unsupported service action.' );
+		}
+		try {
+			( new Client( new Repository() ) )->request( 'POST', '/v1/system/' . $verb, array( 'action' => $verb ) );
+			AuditLog::append( 'server.' . $verb, 'node', 'success' );
+			$result = 'success';
+		} catch ( AgentException $error ) {
+			AuditLog::append( 'server.' . $verb, 'node', 'failed', $error->error_code );
 			$result = 'failed';
 		}
 		wp_safe_redirect( admin_url( 'admin.php?page=ts3pilot-maintenance&ts3pilot_result=' . $result ) );

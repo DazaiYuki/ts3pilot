@@ -1,6 +1,6 @@
 {
-  "version": "0.4.1",
-  "github": "https://github.com/DazaiYuki/ts3pilot/releases/download/v0.4.1/ts3pilot-linux-x64-v0.4.1.tar.gz",
-  "npmmirror": "https://registry.npmmirror.com/@ts3pilot/ts3-manager/-/ts3-manager-0.4.1.tgz",
+  "version": "0.5.0",
+  "github": "https://github.com/DazaiYuki/ts3pilot/releases/download/v0.5.0/ts3pilot-linux-x64-v0.5.0.tar.gz",
+  "npmmirror": "https://registry.npmmirror.com/@ts3pilot/ts3-manager/-/ts3-manager-0.5.0.tgz",
   "note": "install.sh verifies the official release SHA-256 before installing. Mirror downloads require the same digest; npm archives are not substituted for CLI release archives."
 }

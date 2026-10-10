@@ -32,7 +32,7 @@ final class StatusService {
 	 */
 	public function get_snapshot( bool $force = false, ?string $node_id = null ): array {
 		$ttl       = Sanitizer::positive_int( $this->repository->get( 'status_cache_ttl' ), 10 );
-		$cache_key = self::TRANSIENT . ( null === $node_id ? '' : '_' . substr( $node_id, 0, 16 ) );
+		$cache_key = self::TRANSIENT . '_' . hash( 'sha256', $node_id ?? ( new NodeRegistry( $this->repository ) )->active_id() );
 		$client    = null === $node_id ? $this->client : $this->client->for_node( $node_id );
 		$snapshot  = get_transient( $cache_key );
 		if ( false !== $snapshot && is_array( $snapshot ) && ! $force ) {
@@ -70,7 +70,7 @@ final class StatusService {
 	 */
 	public function get_channels_snapshot( bool $force = false, ?string $node_id = null ): array {
 		$ttl       = Sanitizer::positive_int( $this->repository->get( 'status_cache_ttl' ), 10 );
-		$cache_key = self::CHANNELS_TRANSIENT . ( null === $node_id ? '' : '_' . substr( $node_id, 0, 16 ) );
+		$cache_key = self::CHANNELS_TRANSIENT . '_' . hash( 'sha256', $node_id ?? ( new NodeRegistry( $this->repository ) )->active_id() );
 		$client    = null === $node_id ? $this->client : $this->client->for_node( $node_id );
 		$snapshot  = get_transient( $cache_key );
 		if ( is_array( $snapshot ) && ! $force ) {
@@ -99,6 +99,13 @@ final class StatusService {
 
 	public function show_channels_enabled(): bool {
 		return Sanitizer::boolish( $this->repository->get( 'show_channels' ) );
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	public function display_settings(): array {
+		return array_intersect_key( $this->repository->all(), array_flip( array( 'show_name', 'show_online', 'show_max', 'show_version', 'show_channels', 'theme', 'join_policy', 'join_role', 'join_url', 'join_label' ) ) );
 	}
 
 	public function theme_name(): string {

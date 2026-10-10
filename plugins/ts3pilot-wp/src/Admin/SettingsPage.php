@@ -29,12 +29,35 @@ final class SettingsPage {
 		settings_fields( Settings::GROUP );
 		$settings = $this->repository->all();
 		$this->field( 'agent_url', 'Agent URL', esc_attr( (string) $settings['agent_url'] ) );
-		$this->field( 'agent_credential', 'Agent credential (leave blank to keep)', esc_attr( (string) $settings['agent_credential'] ), 'password' );
+		$this->field( 'agent_credential', 'Agent credential (leave blank to keep)', '', 'password' );
 		$this->field( 'agent_node_id', 'Agent node ID', esc_attr( (string) $settings['agent_node_id'] ) );
 		$this->field( 'status_cache_ttl', 'Status cache TTL (seconds)', esc_attr( (string) $settings['status_cache_ttl'] ) );
-		$this->field( 'join_url', 'Join URL (optional, e.g. ts3server://)', esc_attr( (string) $settings['join_url'] ) );
-		echo '<p><label><input type="checkbox" name="ts3pilot_settings[show_channels]" value="1" '
-			. checked( ! empty( $settings['show_channels'] ), true, false ) . ' /> Show public channel tree</label></p>';
+		echo '<h2>Frontend status and join button</h2>';
+		$this->field( 'join_url', 'Join URL (ts3server://, https:// or http://)', esc_attr( (string) $settings['join_url'] ) );
+		$this->field( 'join_label', 'Join button label', esc_attr( (string) $settings['join_label'] ) );
+		echo '<p><label>Join visibility: <select name="ts3pilot_settings[join_policy]">';
+		foreach ( array(
+			'hidden'           => 'Hidden',
+			'public'           => 'Everyone',
+			'logged_in'        => 'Logged-in users',
+			'verified_ts_user' => 'Verified TS3 users',
+			'role'             => 'Specific WordPress role',
+		) as $value => $label ) {
+			echo '<option value="' . esc_attr( $value ) . '" ' . selected( (string) $settings['join_policy'], $value, false ) . '>' . esc_html( $label ) . '</option>';
+		}
+		echo '</select></label></p>';
+		$this->field( 'join_role', 'WordPress role slug (for role visibility)', esc_attr( (string) $settings['join_role'] ) );
+		echo '<p class="description">' . esc_html__( 'Button visibility controls this website only, not access permissions on your TeamSpeak server. Never use an Agent or Query URL as the join address.', 'ts3pilot' ) . '</p>';
+		foreach ( array(
+			'show_name'     => 'Server name',
+			'show_online'   => 'Online status',
+			'show_max'      => 'Player count',
+			'show_version'  => 'Version',
+			'show_channels' => 'Public channel tree',
+		) as $key => $label ) {
+			echo '<p><label><input type="hidden" name="ts3pilot_settings[' . esc_attr( $key ) . ']" value="0" /><input type="checkbox" name="ts3pilot_settings[' . esc_attr( $key ) . ']" value="1" ' . checked( ! empty( $settings[ $key ] ), true, false ) . ' /> ' . esc_html( $label ) . '</label></p>';
+		}
+		echo '<p>Use the TS3 Status block, the TS3 Status &amp; Join widget, <code>[ts3_status]</code> or a standalone <code>[ts3_join]</code> button. Block controls can override these defaults.</p>';
 		echo '<p><label>Theme: <select name="ts3pilot_settings[theme]">';
 		foreach ( array(
 			'auto'  => 'Auto (system)',

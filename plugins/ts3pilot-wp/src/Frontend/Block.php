@@ -23,20 +23,26 @@ final class Block {
 					TS3PILOT_PLUGIN_DIR . 'assets/block',
 					array(
 						'render_callback' => static function ( array $attributes ) use ( $status ): string {
-							return Shortcode::render(
-								array(
-									'node'          => (string) ( $attributes['node'] ?? '' ),
-									'show_name'     => $attributes['showName'] ? 'true' : 'false',
-									'show_online'   => $attributes['showOnline'] ? 'true' : 'false',
-									'show_max'      => $attributes['showMax'] ? 'true' : 'false',
-									'show_version'  => $attributes['showVersion'] ? 'true' : 'false',
-									'show_channels' => $attributes['showChannels'] ? 'true' : 'false',
-									'collapsible'   => $attributes['collapsible'] ? 'true' : 'false',
-									'theme'         => $attributes['theme'] ?? 'auto',
-									'join_policy'   => $attributes['joinPolicy'] ?? 'hidden',
-									'join_role'     => $attributes['joinRole'] ?? '',
-								)
-							);
+							$mapped = array();
+							foreach ( array(
+								'node'         => 'node',
+								'showName'     => 'show_name',
+								'showOnline'   => 'show_online',
+								'showMax'      => 'show_max',
+								'showVersion'  => 'show_version',
+								'showChannels' => 'show_channels',
+								'collapsible'  => 'collapsible',
+								'theme'        => 'theme',
+								'joinPolicy'   => 'join_policy',
+								'joinRole'     => 'join_role',
+								'joinUrl'      => 'join_url',
+								'joinLabel'    => 'join_label',
+							) as $source => $target ) {
+								if ( isset( $attributes[ $source ] ) && 'inherit' !== $attributes[ $source ] && '' !== $attributes[ $source ] ) {
+									$mapped[ $target ] = is_bool( $attributes[ $source ] ) ? ( $attributes[ $source ] ? 'true' : 'false' ) : (string) $attributes[ $source ];
+								}
+							}
+							return Shortcode::render( $mapped );
 						},
 					)
 				);
