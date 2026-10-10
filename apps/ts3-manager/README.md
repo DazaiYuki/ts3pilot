@@ -6,7 +6,7 @@ The npm package contains a standalone **Linux x86_64 binary** with its own Node 
 
 As checked on 2026-10-10, npm's latest published version is 0.4.0, while the current GitHub Release is 0.5.0. A release's npm tarball attachment is not automatically published to the npm registry. Use the [official Release](https://github.com/DazaiYuki/ts3pilot/releases/tag/v0.5.0) for the current production binary or WordPress plugin.
 
-See the [project README](https://github.com/DazaiYuki/ts3pilot#readme), [production deployment](https://github.com/DazaiYuki/ts3pilot/blob/main/docs/deployment.md), and [mainland/offline installation guide](https://github.com/DazaiYuki/ts3pilot/blob/main/docs/mainland-install.md).
+See the [project README](https://github.com/DazaiYuki/ts3pilot#readme) and [production deployment](https://github.com/DazaiYuki/ts3pilot/blob/main/docs/deployment.md).
 
 ## License & trademark notice
 

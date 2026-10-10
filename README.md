@@ -27,8 +27,6 @@ ts3pilot version
 
 The installer verifies SHA-256, installs to `/opt/ts3pilot`, and links `/usr/local/bin/ts3pilot`. Failed verification preserves the existing executable; reinstalling preserves user configuration.
 
-For restricted or mainland China networks, see the [mainland installation and offline transfer guide](docs/mainland-install.md). jsDelivr serves repository files, not GitHub Release binaries. A successful script download does not establish that its binary downloads will work.
-
 ## New installation or adoption
 
 Follow the [production deployment guide](docs/deployment.md) to create the service account and `/var/lib/ts3pilot/config.json`, then select `mode=production`. The default development mode uses mocks.
@@ -78,7 +76,6 @@ v0.5.0 passes 130 Node and 63 PHP tests, real official TS3 installation and inde
 ## Documentation and development
 
 - [Production deployment](docs/deployment.md)
-- [Mainland network installation and upgrades (中文)](docs/mainland-install.md)
 - [Quick start and FAQ](docs/quickstart-en.md)
 - [Development, tests and release](docs/development.md)
 - [Architecture](docs/architecture.md) · [Agent API](docs/api/agent-api-v1.md) · [Security](SECURITY.md)
