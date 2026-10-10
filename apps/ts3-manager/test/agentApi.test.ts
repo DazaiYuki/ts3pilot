@@ -89,6 +89,25 @@ test('health endpoint is public', async () => {
   });
 });
 
+test('system GET status is body-free and action substitution cannot bypass route capabilities', async () => {
+  await withServer(tempDir('system-route'), config => {
+    config.agent.credential = 'test-credential';
+    config.agent.capabilities = ['server.start', 'server.status'];
+  }, async handle => {
+    const getStatus = () => request(handle, 'GET', '/v1/system/status', '', signedHeaders('test-credential', 'GET', '/v1/system/status', ''));
+    assert.equal((await getStatus()).status, 200);
+    const substituted = JSON.stringify({ action: 'stop' });
+    const bad = await request(handle, 'POST', '/v1/system/start', substituted, signedHeaders('test-credential', 'POST', '/v1/system/start', substituted));
+    assert.equal(bad.status, 400);
+    const denied = await request(handle, 'POST', '/v1/system/stop', substituted, signedHeaders('test-credential', 'POST', '/v1/system/stop', substituted));
+    assert.equal(denied.status, 403);
+    const good = JSON.stringify({ action: 'start' });
+    assert.equal((await request(handle, 'POST', '/v1/system/start', good, signedHeaders('test-credential', 'POST', '/v1/system/start', good))).status, 200);
+    const payload = await (await getStatus()).json() as { data: { state: string } };
+    assert.equal(payload.data.state, 'running');
+  });
+});
+
 test('authed endpoints reject missing/wrong signatures', async () => {
   await withServer(
     tempDir('agent-auth'),

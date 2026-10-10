@@ -23,6 +23,7 @@ final class Shortcode {
 	public static function init( StatusService $status ): void {
 		self::$status = $status;
 		add_shortcode( 'ts3_status', array( self::class, 'render' ) );
+		add_shortcode( 'ts3_join', array( self::class, 'render_join' ) );
 	}
 
 	/**
@@ -33,18 +34,21 @@ final class Shortcode {
 			return '';
 		}
 		$theme          = self::$status->theme_name();
+		$defaults       = self::$status->display_settings();
 		$attributes     = shortcode_atts(
 			array(
 				'node'          => '',
-				'show_name'     => 'true',
-				'show_online'   => 'true',
-				'show_max'      => 'true',
-				'show_version'  => 'false',
+				'show_name'     => ! empty( $defaults['show_name'] ) ? 'true' : 'false',
+				'show_online'   => ! empty( $defaults['show_online'] ) ? 'true' : 'false',
+				'show_max'      => ! empty( $defaults['show_max'] ) ? 'true' : 'false',
+				'show_version'  => ! empty( $defaults['show_version'] ) ? 'true' : 'false',
 				'show_channels' => self::$status->show_channels_enabled() ? 'true' : 'false',
 				'collapsible'   => 'false',
 				'theme'         => $theme,
-				'join_policy'   => 'hidden',
-				'join_role'     => '',
+				'join_policy'   => $defaults['join_policy'],
+				'join_role'     => $defaults['join_role'],
+				'join_url'      => $defaults['join_url'],
+				'join_label'    => $defaults['join_label'],
 				'class'         => 'ts3-status-card',
 			),
 			$attributes,
@@ -72,7 +76,7 @@ final class Shortcode {
 				. esc_html__( '暂时无法获取状态', 'ts3pilot' ) . '</div>';
 		}
 
-		$html = '<div class="' . esc_attr( $class ) . '" data-ts3-theme="' . esc_attr( $theme_value ) . '">';
+		$html = '<div class="' . esc_attr( $class ) . '" data-ts3-state="' . esc_attr( ! empty( $snapshot['online'] ) ? 'online' : 'offline' ) . '" data-ts3-theme="' . esc_attr( $theme_value ) . '">';
 		if ( $show_name ) {
 			$html .= '<div class="ts3-status-name">' . esc_html( (string) ( $snapshot['name'] ?? '' ) ) . '</div>';
 		}
@@ -88,7 +92,7 @@ final class Shortcode {
 		if ( $show_channels ) {
 			$html .= self::render_channels( $collapsible, '' === $node_id ? null : $node_id );
 		}
-		$html .= self::join_button( $join_policy, $join_role );
+		$html .= self::join_button( $join_policy, $join_role, (string) $attributes['join_url'], (string) $attributes['join_label'] );
 		$html .= '</div>';
 		return $html;
 	}
@@ -130,38 +134,49 @@ final class Shortcode {
 		return $html;
 	}
 
-	private static function join_button( string $policy, string $join_role ): string {
+	/**
+	 * @param array<string, mixed> $attributes
+	 */
+	public static function render_join( array $attributes = array() ): string {
+		if ( null === self::$status ) {
+			return '';
+		}
+		$settings = array_merge( self::$status->display_settings(), array_intersect_key( $attributes, array_flip( array( 'join_policy', 'join_role', 'join_url', 'join_label' ) ) ) );
+		return self::join_button( Sanitizer::join_policy( (string) $settings['join_policy'] ), Sanitizer::role_name( (string) $settings['join_role'] ), (string) $settings['join_url'], (string) $settings['join_label'] );
+	}
+
+	private static function join_button( string $policy, string $join_role, string $url, string $label ): string {
 		if ( 'hidden' === $policy ) {
 			return '';
 		}
 		if ( 'public' === $policy ) {
-			return self::render_join_button();
+			return self::render_join_button( $url, $label );
 		}
 		if ( 'logged_in' === $policy ) {
-			return is_user_logged_in() ? self::render_join_button() : '';
+			return is_user_logged_in() ? self::render_join_button( $url, $label ) : '';
 		}
 		if ( 'verified_ts_user' === $policy ) {
 			$user_id = get_current_user_id();
 			if ( $user_id > 0 ) {
 				$mapping = Mapping::get( $user_id );
 				if ( 'verified' === ( $mapping['status'] ?? '' ) ) {
-					return self::render_join_button();
+					return self::render_join_button( $url, $label );
 				}
 			}
 			return '';
 		}
 		if ( 'role' === $policy && '' !== $join_role ) {
-			return current_user_can( $join_role ) ? self::render_join_button() : '';
+			$user = wp_get_current_user();
+			return in_array( $join_role, (array) $user->roles, true ) ? self::render_join_button( $url, $label ) : '';
 		}
 		return '';
 	}
 
-	private static function render_join_button(): string {
-		$settings = get_option( 'ts3pilot_settings', array() );
-		$url      = is_array( $settings ) ? (string) ( $settings['join_url'] ?? '' ) : '';
+	private static function render_join_button( string $url, string $label ): string {
+		$url = Sanitizer::join_url( $url );
 		if ( '' === $url ) {
 			return '';
 		}
-		return '<a class="ts3-status-join" href="' . esc_url( $url ) . '" rel="nofollow noopener">' . esc_html__( '加入语音', 'ts3pilot' ) . '</a>';
+		return '<a class="ts3-status-join" href="' . esc_url( $url, array( 'ts3server', 'https', 'http' ) ) . '" rel="nofollow noopener">' . esc_html( '' === $label ? __( '加入语音', 'ts3pilot' ) : $label ) . '</a>';
 	}
 }

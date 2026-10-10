@@ -38,6 +38,15 @@ final class Sanitizer {
 		return in_array( $value, self::JOIN_POLICIES, true ) ? $value : 'hidden';
 	}
 
+	public static function join_url( string $value ): string {
+		$value = trim( $value );
+		$parts = wp_parse_url( $value );
+		if ( strlen( $value ) > 2048 || false === $parts || empty( $parts['host'] ) || isset( $parts['user'] ) || isset( $parts['pass'] ) || ! in_array( strtolower( (string) ( $parts['scheme'] ?? '' ) ), array( 'ts3server', 'https', 'http' ), true ) ) {
+			return '';
+		}
+		return esc_url_raw( $value, array( 'ts3server', 'https', 'http' ) );
+	}
+
 	public static function positive_int( $value, int $fallback ): int {
 		$int = filter_var( $value, FILTER_VALIDATE_INT );
 		return ( false === $int || $int < 0 ) ? $fallback : (int) $int;

@@ -57,13 +57,14 @@ final class Settings {
 			'status_cache_ttl'         => Sanitizer::positive_int( $input['status_cache_ttl'] ?? $current['status_cache_ttl'], 10 ),
 			'join_policy'              => Sanitizer::join_policy( (string) ( $input['join_policy'] ?? 'hidden' ) ),
 			'join_role'                => Sanitizer::role_name( (string) ( $input['join_role'] ?? '' ) ),
-			'join_url'                 => esc_url_raw( (string) ( $input['join_url'] ?? '' ) ),
+			'join_url'                 => Sanitizer::join_url( (string) ( $input['join_url'] ?? $current['join_url'] ) ),
+			'join_label'               => sanitize_text_field( (string) ( $input['join_label'] ?? $current['join_label'] ) ),
 			'show_name'                => Sanitizer::boolish( $input['show_name'] ?? $current['show_name'] ),
 			'show_online'              => Sanitizer::boolish( $input['show_online'] ?? $current['show_online'] ),
 			'show_max'                 => Sanitizer::boolish( $input['show_max'] ?? $current['show_max'] ),
 			'show_version'             => Sanitizer::boolish( $input['show_version'] ?? $current['show_version'] ),
 			'show_channels'            => Sanitizer::boolish( $input['show_channels'] ?? $current['show_channels'] ),
-			'theme'                    => in_array( (string) ( $input['theme'] ?? 'auto' ), array( 'auto', 'light', 'dark' ), true ) ? (string) $input['theme'] : 'auto',
+			'theme'                    => in_array( (string) ( $input['theme'] ?? $current['theme'] ), array( 'auto', 'light', 'dark' ), true ) ? (string) ( $input['theme'] ?? $current['theme'] ) : 'auto',
 			'delete_data_on_uninstall' => Sanitizer::boolish( $input['delete_data_on_uninstall'] ?? false ),
 		);
 	}

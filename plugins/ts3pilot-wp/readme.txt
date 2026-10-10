@@ -2,9 +2,9 @@
 Contributors: ts3pilot
 Tags: teamspeak, ts3, server, status, control plane
 Requires at least: 6.0
-Tested up to: 6.7
+Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.4.1
+Stable tag: 0.5.0
 License: Apache-2.0
 License URI: https://www.apache.org/licenses/LICENSE-2.0
 
@@ -44,6 +44,13 @@ perform the actions the site administrator grants it.
 No. WordPress capabilities and TeamSpeak permissions are completely separate.
 
 == Changelog ==
+
+= 0.5.0 =
+* Adopt and control existing servers started with the official script.
+* Configurable status block, classic widget and standalone [ts3_join] button.
+* Native ts3server:// links, labels, visibility policies and role checks.
+* Dashboard metrics and capability-gated service controls.
+* Fix service route authorization, node caches and settings handling.
 
 = 0.4.1 =
 * Ship a production class loader and a valid plugin ZIP.

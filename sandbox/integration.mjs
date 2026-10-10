@@ -32,7 +32,18 @@ const wait = async (check, label) => {
 const launch = (name, args) => { containers.push(name); docker('run', '-d', '--name', name, ...args); };
 const wpEnv = ['-e', `WORDPRESS_DB_HOST=${dbName}`, '-e', 'WORDPRESS_DB_NAME=wordpress', '-e', 'WORDPRESS_DB_USER=wordpress', '-e', `WORDPRESS_DB_PASSWORD=${randomBytes(24).toString('hex')}`];
 const dbPassword = wpEnv[7].slice('WORDPRESS_DB_PASSWORD='.length);
-const wp = (...args) => docker('run', '--rm', '--user=0', '--network', `container:${wpName}`, '-v', `${volume}:/var/www/html`, '-v', `${work}:/state:ro`, '-v', `${root}/sandbox:/checks:ro`, '-v', `${root}/dist/release:/artifacts:ro`, ...wpEnv, 'wordpress:cli', 'wp', '--allow-root', ...args);
+const wp = (...args) => {
+  try { return docker('run', '--rm', '--user=0', '--network', `container:${wpName}`, '-v', `${volume}:/var/www/html`, '-v', `${work}:/state:ro`, '-v', `${root}/sandbox:/checks:ro`, '-v', `${root}/dist/release:/artifacts:ro`, ...wpEnv, 'wordpress:cli', 'wp', '--allow-root', ...args); }
+  catch (error) {
+    // Only smoke-test markers, never command arguments or PHP stack traces.
+    if (args[0] === 'eval-file') {
+      for (const line of String(error.stdout ?? '').split('\n').filter(line => /^(PASS|FAIL) /.test(line))) {
+        console.error(line.replace(/[A-Za-z0-9_+=\/-]{24,}/g, '[redacted]'));
+      }
+    }
+    throw error;
+  }
+};
 const privateWrite = (path, content) => writeFileSync(path, content, { mode: 0o600 });
 const getQueryPassword = logs => {
   const password = logs.match(/password=\s*"([^"]+)"/)?.[1];
@@ -89,7 +100,7 @@ try {
   const native = join(work, 'native'); mkdirSync(native);
   // The official start script daemonizes. Init must reap orphaned children so
   // its stop command does not wait forever on a zombie in this test container.
-  launch(nativeName, ['--init', '--network', network, '-v', `${binary}:/ts3pilot:ro`, '-v', `${native}:/native`, 'ubuntu:24.04', '/bin/sh', '-ec', 'apt-get update >/native/apt.log 2>&1 && DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl bzip2 libstdc++6 >/native/packages.log 2>&1 && touch /native/prerequisites.ok && exec sleep infinity']);
+  launch(nativeName, ['--init', '--network', `container:${wpName}`, '-v', `${binary}:/ts3pilot:ro`, '-v', `${native}:/native`, '-v', `${tsArchive}:/official-server.tar.bz2:ro`, 'ubuntu:24.04', '/bin/sh', '-ec', 'apt-get update >/native/apt.log 2>&1 && DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl bzip2 libstdc++6 >/native/packages.log 2>&1 && touch /native/prerequisites.ok && exec sleep infinity']);
   await wait(() => { try { docker('exec', nativeName, 'test', '-f', '/native/prerequisites.ok'); return true; } catch { return false; } }, 'native Ubuntu prerequisites');
   docker('exec', nativeName, '/ts3pilot', 'config', 'init', '--config', '/native/config.json');
   docker('exec', nativeName, '/ts3pilot', 'config', 'set', 'mode', 'production', '--config', '/native/config.json');
@@ -104,17 +115,46 @@ try {
     } catch { return false; }
   }, 'new native Ubuntu TS3');
   const nativePassword = getQueryPassword(docker('exec', nativeName, 'cat', '/native/server.log'));
-  await exerciseAgent(nativeName, nativePassword, 17881);
+  await exerciseAgent('127.0.0.1', nativePassword, 17881);
   console.log('PASS new native Ubuntu TS3 installation managed through WordPress');
 
-  // Stop only our test server, then prove adopt does not alter its files.
+  // Finish new-install verification before creating a genuinely independent
+  // pre-existing tar/script server. No ts3pilot install command touches it.
   docker('exec', nativeName, 'sh', '-ec', 'cd /native/ts3; runuser -u ts3 -- ./ts3server_startscript.sh stop');
-  const fingerprint = () => docker('exec', nativeName, 'sh', '-ec', 'find /native/ts3 -type f -exec sha256sum {} + | sort');
+  docker('exec', nativeName, 'sh', '-ec', 'mkdir /native/existing; tar -xjf /official-server.tar.bz2 -C /native/existing --strip-components=1; touch /native/existing/.ts3server_license_accepted; mkdir -p /native/existing/files; printf original-upload > /native/existing/files/adoption-sentinel; chown -R ts3:ts3 /native/existing; cd /native/existing; runuser -u ts3 -- ./ts3server_startscript.sh start > /native/existing-start.log 2>&1');
+  await wait(() => {
+    try { return docker('exec', nativeName, 'sh', '-ec', 'find /native/existing/logs -type f -name "*.log" -exec grep -l "listening for query" {} +').trim().length > 0; } catch { return false; }
+  }, 'pre-existing tar/script server');
+  const existingPassword = getQueryPassword(docker('exec', nativeName, 'cat', '/native/existing-start.log'));
+  const cfg = defaultConfig(); cfg.mode = 'production'; cfg.dataDir = '/native/state';
+  cfg.ts3.installPath = '/native/existing'; cfg.ts3.deployment.kind = 'native';
+  cfg.ts3.query.username = 'serveradmin'; cfg.ts3.query.password = existingPassword;
+  cfg.agent.port = 17882; cfg.agent.capabilities.push('server.restart');
+  privateWrite(join(native, 'existing-agent.json'), JSON.stringify(cfg));
+  docker('exec', nativeName, 'sh', '-ec', 'mkdir -m 700 /native/state; mv /native/existing-agent.json /native/state/config.json; chown -R ts3:ts3 /native/state');
+  const cli = (...args) => docker('exec', nativeName, 'runuser', '-u', 'ts3', '--', '/ts3pilot', ...args, '--config', '/native/state/config.json');
+  const liveAdopt = cli('adopt');
+  assert.ok(liveAdopt.includes('deployment: native'));
+  assert.equal(JSON.parse(cli('status')).state, 'running');
+  assert.equal(JSON.parse(cli('status')).provider, 'script');
+  assert.equal(docker('exec', nativeName, 'cat', '/native/existing/files/adoption-sentinel'), 'original-upload');
+  assert.equal(JSON.parse(cli('stop')).state, 'stopped');
+  const fingerprint = () => docker('exec', nativeName, 'sh', '-ec', 'find /native/existing -type f -exec sha256sum {} + | sort');
   const before = fingerprint();
-  const analysis = docker('exec', nativeName, '/ts3pilot', 'adopt', '--config', '/native/config.json');
-  assert.ok(analysis.includes('deployment: native'), analysis);
+  cli('adopt');
   assert.equal(fingerprint(), before);
-  console.log('PASS native adopt is read-only');
+  assert.equal(JSON.parse(cli('start')).state, 'running');
+  assert.equal(JSON.parse(cli('restart')).state, 'running');
+  console.log('PASS manual tar/script server adopted live, read-only fingerprints preserved, CLI start/stop/restart verified');
+  privateWrite(join(work, 'pairing.txt'), cli('api', 'enable', '--port', '17882'));
+  docker('exec', nativeName, 'sh', '-ec', 'runuser -u ts3 -- /ts3pilot agent --config /native/state/config.json > /native/agent.log 2>&1 &');
+  await wait(() => {
+    try { return wp('eval', "echo wp_remote_retrieve_response_code(wp_remote_get('http://127.0.0.1:17882/v1/health'));").trim() === '200'; } catch { return false; }
+  }, 'native script Agent health');
+  console.log(wp('eval-file', '/checks/wp-smoke.php', 'http://127.0.0.1:17882').trim());
+  console.log(wp('eval-file', '/checks/wp-script-control.php').trim());
+  assert.equal(docker('exec', nativeName, 'cat', '/native/existing/files/adoption-sentinel'), 'original-upload');
+  console.log('PASS adopted script server managed through WordPress with existing files preserved');
   const versions = Object.fromEntries(['teamspeak:3.13.7', 'wordpress:php8.3-apache', 'wordpress:cli', 'mariadb:11.4', 'ubuntu:24.04'].map(image => [image, docker('image', 'inspect', image, '--format', '{{index .RepoDigests 0}}').trim()]));
   writeFileSync(join(root, 'dist/release/integration-results.json'), JSON.stringify({ version, testedAt: new Date().toISOString(), passed: true, images: versions }, null, 2) + '\n');
   console.log('integration: ALL GREEN');

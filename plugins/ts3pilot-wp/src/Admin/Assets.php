@@ -20,6 +20,7 @@ final class Assets {
 		if ( null === $screen || false === strpos( (string) $screen->id, 'ts3pilot' ) ) {
 			return;
 		}
+		wp_enqueue_style( 'ts3pilot-admin', TS3PILOT_PLUGIN_URL . 'assets/admin.css', array(), TS3PILOT_VERSION );
 		wp_enqueue_script( 'ts3pilot-admin', TS3PILOT_PLUGIN_URL . 'assets/admin.js', array(), TS3PILOT_VERSION, true );
 		wp_localize_script(
 			'ts3pilot-admin',

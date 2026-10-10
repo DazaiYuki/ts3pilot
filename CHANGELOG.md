@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0 — existing script servers and WordPress controls
+
+Run official start scripts from their installation directory, detect running/stopped status correctly, and select the script provider for local installations without an existing systemd unit. Add configurable WordPress status and join controls, a classic widget, editor settings and dashboard service actions. Fix service route authorization, native TeamSpeak links, role checks and per-node cache isolation. See [release notes](docs/release-notes-v0.5.0.md).
+
 ## 0.4.1 — production installation and integration fixes
 
 Fix shipped WordPress boot and GET transport, real ServerQuery handshake and escaping, verified atomic upgrades, private configuration and systemd generation. Add release artifact, shell installer, supported Linux userland and real TS3/WordPress integration checks. See [release notes](docs/release-notes-v0.4.1.md).

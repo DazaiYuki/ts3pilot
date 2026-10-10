@@ -9,19 +9,19 @@ Create or adopt a TeamSpeak 3 server on Linux. The independent CLI/Agent manages
 | Goal | Distribution | Install Node.js? |
 | --- | --- | --- |
 | Linux x86_64 production server | Standalone Release binary | **No**, the runtime is bundled |
-| WordPress control panel | `ts3pilot-wp-v0.4.1.zip` from Releases | No Node/npm/Composer; WordPress and PHP are required |
+| WordPress control panel | `ts3pilot-wp-v0.5.0.zip` from Releases | No Node/npm/Composer; WordPress and PHP are required |
 | TypeScript development and tests | Repository and npm dependencies | Node 24, or Node 22.6+ with type stripping enabled |
 | Install through npm | `@ts3pilot/ts3-manager` | npm is required for installation; the package contains a standalone Linux x86_64 binary |
 
-**Stable Release: [v0.4.1](https://github.com/DazaiYuki/ts3pilot/releases/tag/v0.4.1).** As checked on 2026-10-09, the official npm package is still **0.4.0**. The npm `.tgz` attached to a GitHub Release does not mean that version has been published to the registry. Third-party registries may also lag.
+**Stable Release: [v0.5.0](https://github.com/DazaiYuki/ts3pilot/releases/tag/v0.5.0).** As checked on 2026-10-09, the official npm package is still **0.4.0**. The npm `.tgz` attached to a GitHub Release does not mean that version has been published to the registry. Third-party registries may also lag.
 
 ## Install the CLI
 
 For Linux **x86_64 (64-bit x86)**; no Node, npm or PHP is needed on the CLI server. PHP is needed only for WordPress.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/DazaiYuki/ts3pilot/v0.4.1/scripts/install.sh -o install-ts3pilot.sh
-sudo env TS3PILOT_VERSION=0.4.1 bash install-ts3pilot.sh
+curl -fsSL https://raw.githubusercontent.com/DazaiYuki/ts3pilot/v0.5.0/scripts/install.sh -o install-ts3pilot.sh
+sudo env TS3PILOT_VERSION=0.5.0 bash install-ts3pilot.sh
 ts3pilot version
 ```
 
@@ -52,8 +52,8 @@ Copy the single-use pairing code, then start the Agent through systemd as docume
 
 1. Upload the Release plugin ZIP through WordPress's plugin installer and activate it. The repository source ZIP is not an installable plugin.
 2. In **TS3Pilot → Settings**, enter the Agent URL and pairing code. Codes expire after 15 minutes and can be used once.
-3. Confirm CLI 0.4.1, production mode and a real Query provider, then check status, clients and channel management.
-4. Use the **TS3 Status** block or `[ts3_status show_channels="true"]`; identity verification uses `[ts3_identity]`.
+3. Confirm CLI 0.5.0, production mode and a real Query provider, then check status, clients and channel management.
+4. Configure display fields, join URL, label and visibility in Settings. Use the **TS3 Status** block with editor controls, the **TS3 Status & Join** classic widget, or `[ts3_status show_channels="true"]`. A standalone button uses `[ts3_join]`; identity verification uses `[ts3_identity]`.
 
 Native same-host deployments can use loopback; separate containers have separate loopback networks. Cross-host connections require the documented HTTPS and source restrictions. Paired local management does not depend on GitHub/npm being reachable; online installation and automatic updates do. A verified plugin ZIP can also be uploaded manually.
 
@@ -73,7 +73,7 @@ Append `--config /var/lib/ts3pilot/config.json`. WordPress role permissions and 
 
 ## Validation
 
-v0.4.1 passes 127 Node and 59 PHP tests, real official TS3 installation and read-only adoption on Ubuntu 24.04, and real WordPress integration. Unprivileged CLI/Agent checks pass on 17 maintained Linux images across Ubuntu, Debian, Rocky Linux, Fedora, openSUSE, Alpine and Arch. Container checks cover user space, not every distribution's systemd/SELinux configuration or third-party TS3 binary.
+v0.5.0 passes 130 Node and 63 PHP tests, real official TS3 installation and independent manual tar/script adoption and service control on Ubuntu 24.04, and real WordPress integration. Unprivileged CLI/Agent checks pass on 17 maintained Linux images across Ubuntu, Debian, Rocky Linux, Fedora, openSUSE, Alpine and Arch. Container checks cover user space, not every distribution's systemd/SELinux configuration or third-party TS3 binary.
 
 ## Documentation and development
 
@@ -82,7 +82,7 @@ v0.4.1 passes 127 Node and 59 PHP tests, real official TS3 installation and read
 - [Quick start and FAQ](docs/quickstart-en.md)
 - [Development, tests and release](docs/development.md)
 - [Architecture](docs/architecture.md) · [Agent API](docs/api/agent-api-v1.md) · [Security](SECURITY.md)
-- [Changelog](CHANGELOG.md) · [v0.4.1 notes](docs/release-notes-v0.4.1.md)
+- [Changelog](CHANGELOG.md) · [v0.5.0 notes](docs/release-notes-v0.5.0.md)
 
 Use `npm ci` for source development. Production standalone installs do not require a source build.
 
