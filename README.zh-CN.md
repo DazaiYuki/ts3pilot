@@ -53,7 +53,7 @@ sudo -u ts3 ts3pilot api enable --config /var/lib/ts3pilot/config.json
 1. 下载正式 Release 的 ZIP，在 WordPress「插件 → 安装插件 → 上传插件」安装并激活。不要上传仓库源码 ZIP。
 2. 在 **TS3Pilot → Settings** 填写 Agent URL 和配对码；配对码 15 分钟内有效且只能使用一次。
 3. 确认连接返回 CLI 0.5.0、production 模式及真实 Query provider，再检查状态、客户端和频道管理。
-4. 页面添加 **TS3 Status** 区块或 `[ts3_status show_channels="true"]`；身份入口使用 `[ts3_identity]`。
+4. 在设置页配置显示字段、加入地址、文字和可见性。使用带侧栏设置的 **TS3 Status** 区块、**TS3 Status & Join** 经典小工具，或 `[ts3_status show_channels="true"]`；独立按钮使用 `[ts3_join]`，身份入口使用 `[ts3_identity]`。
 
 同机原生部署可以用回环地址；Docker 容器各有自己的回环网络。跨主机连接按部署文档配置 HTTPS 与来源限制。**GitHub/npm 不可达不会阻断已经配对的本地管理功能**，但会影响在线安装和自动更新；WordPress 可以手动上传已校验的新版 ZIP。
 

@@ -90,7 +90,7 @@
 	display: inline-block;
 	margin-top: 10px;
 	padding: 6px 14px;
-	background: var(--ts3-accent);
+	background: var(--ts3-accent, #2271b1);
 	color: #ffffff;
 	border-radius: 4px;
 	text-decoration: none;

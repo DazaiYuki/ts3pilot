@@ -5,6 +5,7 @@ try {
     $client = new Ts3Pilot\Agent\Client(new Ts3Pilot\Settings\Repository());
     $info = $client->info();
     if ($info['systemProvider'] !== 'script') throw new RuntimeException('Expected native script provider');
+    $beforeChannels = $client->request('GET', '/v1/ts3/channels');
     foreach (array('stop' => 'stopped', 'start' => 'running', 'restart' => 'running') as $action => $expected) {
         $result = $client->request('POST', '/v1/system/' . $action, array('action' => $action));
         if ($result['state'] !== $expected) throw new RuntimeException('Wrong state after ' . $action);
@@ -12,6 +13,9 @@ try {
         if ($status['state'] !== $expected) throw new RuntimeException('Wrong script status after ' . $action);
         echo 'PASS WordPress native script ', $action, "\n";
     }
+    $afterChannels = $client->request('GET', '/v1/ts3/channels');
+    if (array_column($beforeChannels, 'name') !== array_column($afterChannels, 'name')) throw new RuntimeException('Existing channels changed across restart');
+    echo "PASS ServerQuery reconnect and existing channel preservation after restart\n";
     $repo = new Ts3Pilot\Settings\Repository();
     $status = new Ts3Pilot\Services\StatusService($client, $repo);
     ob_start(); (new Ts3Pilot\Admin\MaintenancePage($client))->render(); $html = ob_get_clean();
